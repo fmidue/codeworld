@@ -34,7 +34,7 @@ import Control.Concurrent
 import Control.Exception (finally)
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Aeson
+import Data.Aeson hiding (Key)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Char (isPunctuation, isSpace)
