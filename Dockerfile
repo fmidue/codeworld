@@ -99,7 +99,7 @@ RUN npm install -s uglify-js https://github.com/angelozerr/CodeMirror-Extension
 
 ## Fetch third_party/blockly submodule
 
-WORKDIR /codeworld/build
+WORKDIR /codeworld
 
 RUN git submodule init
 RUN git submodule update
@@ -107,8 +107,6 @@ RUN git submodule update
 RUN git config core.hooksPath .githooks
 
 # Build codeworld
-
-WORKDIR /codeworld
 
 RUN /codeworld/mirror/get_mirrored
 
@@ -136,7 +134,7 @@ RUN cabal configure --ghcjs
 RUN cabal haddock --html
 RUN cabal haddock --hoogle
 
-RUN grep -r -s -h 'pattern\s*[A-Za-z_0-9]*\s*::.*' . >> /codeworld/web/codeworld-base.txt
+RUN grep -r -s -h 'pattern\s*[A-Za-z_0-9]*\s*::.*' . > /codeworld/web/codeworld-base.txt
 
 WORKDIR /codeworld/codeworld-api
 
@@ -155,5 +153,53 @@ WORKDIR /codeworld/build/CodeMirror
 RUN node_modules/uglify-js/bin/uglifyjs lib/codemirror.js addon/dialog/dialog.js addon/display/placeholder.js addon/display/rulers.js addon/edit/matchbrackets.js addon/hint/show-hint.js addon/lint/lint.js addon/runmode/runmode.js addon/scroll/annotatescrollbar.js addon/search/match-highlighter.js addon/search/matchesonscrollbar.js addon/search/search.js addon/search/searchcursor.js addon/selection/active-line.js mode/haskell/haskell.js node_modules/codemirror-extension/addon/hover/text-hover.js -c -m > codemirror-compressed.js 
 
 WORKDIR /codeworld
+
+RUN rm /codeworld/web/mirrored
+
+RUN cp -r /codeworld/build/mirrored/ /codeworld/web/mirrored
+
+RUN cp /codeworld/build/CodeMirror/codemirror-compressed.js /codeworld/web/js/codemirror-compressed.js
+
+RUN rm /codeworld/web/SourceCodePro
+
+RUN cp -r /codeworld/third_party/SourceCodePro /codeworld/web/SourceCodePro
+
+RUN cp /codeworld/third_party/jsdiff/diff.min.js /codeworld/web/js/diff.min.js
+
+RUN cp /codeworld/third_party/details-element-polyfill/details-element-polyfill.js /codeworld/web/js/details-element-polyfill.js
+
+RUN cp /codeworld/third_party/codemirror-buttons/buttons.js /codeworld/web/js/codemirror-buttons/buttons.js
+
+RUN rm /codeworld/web/doc
+
+RUN cp -r /codeworld/codeworld-base/dist/doc/html/codeworld-base /codeworld/web/doc
+
+RUN rm /codeworld/web/doc-haskell
+
+RUN cp -r /codeworld/codeworld-api/dist/doc/html/codeworld-api /codeworld/web/doc-haskell
+
+RUN cp /codeworld/web/env.html /codeworld/web/index.html
+
+RUN cp /codeworld/web/gallery.html /codeworld/web/gallery-icfp17.html
+
+RUN rm /codeworld/web/blockly
+
+RUN cp -r /codeworld/third_party/blockly /codeworld/web/blockly
+
+RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/lib.js /codeworld/web/js/blocks_lib.js
+RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/out.js /codeworld/web/js/blocks_out.js
+RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/rts.js /codeworld/web/js/blocks_rts.js
+RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/runmain.js /codeworld/web/js/blocks_runmain.js
+
+RUN cp /codeworld/build/CodeMirror/theme/ambiance.css /codeworld/web/css/ambiance.css
+RUN cp /codeworld/build/CodeMirror/lib/codemirror.css /codeworld/web/css/codemirror.css
+RUN cp /codeworld/build/CodeMirror/addon/lint/lint.css /codeworld/web/css/lint.css
+RUN cp /codeworld/build/CodeMirror/addon/hint/show-hint.css /codeworld/web/css/show-hint.css
+
+RUN rm -r /codeworld/web/ims
+RUN rm /codeworld/web/help/ims
+
+RUN cp -r /codeworld/third_party/MaterialDesign /codeworld/web/ims
+RUN cp -r /codeworld/third_party/MaterialDesign /codeworld/web/help/ims
 
 CMD ./run.sh
