@@ -9,6 +9,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 RUN apt-get install -y nodejs
 RUN sudo ln -s /usr/bin/node /usr/bin/nodejs
 
+ENV PATH /codeworld/build/bin:/home/codeworld/.ghcup/bin:/home/codeworld/.cabal/bin:$PATH
+
 RUN echo "codeworld ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
 WORKDIR /codeworld
 RUN chown codeworld:codeworld .
@@ -22,34 +24,21 @@ COPY --chown=codeworld . .
 RUN mkdir -p /codeworld/build/.ghcup/bin
 RUN curl -fsSL https://gitlab.haskell.org/haskell/ghcup/raw/master/ghcup > /codeworld/build/.ghcup/bin/ghcup
 RUN chmod +x /codeworld/build/.ghcup/bin/ghcup
-RUN /codeworld/build/.ghcup/bin/ghcup upgrade
+RUN ghcup upgrade
 
 
 ## Install GHC
-RUN /codeworld/build/.ghcup/bin/ghcup install 8.6.5
-RUN /codeworld/build/.ghcup/bin/ghcup set 8.6.5
-RUN /codeworld/build/.ghcup/bin/ghcup install-cabal 2.4.1.0
-RUN sudo cp -rf /home/codeworld/.ghcup /codeworld/build
+RUN ghcup install 8.6.5
+RUN ghcup set 8.6.5
+RUN ghcup install-cabal 2.4.1.0
 
-RUN sudo ln -s /home/codeworld/.ghcup/bin/cabal /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/ghc /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/ghc-8.6 /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/ghc-8.6.5 /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/ghc-pkg /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/ghc-pkg-8.6 /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/ghc-pkg-8.6.5 /usr/bin
-
-RUN /codeworld/build/.ghcup/bin/cabal update --index-state='2023-02-09T01:33:22Z'
+RUN cabal update --index-state='2023-02-09T01:33:22Z'
 
 
 ## Install ghcjs
 
-RUN /codeworld/build/.ghcup/bin/cabal v2-install alex
-RUN /codeworld/build/.ghcup/bin/cabal v2-install happy-1.19.9 --overwrite-policy=always
-RUN sudo cp -rf /home/codeworld/.cabal /codeworld/build
-RUN sudo ln -s /home/codeworld/.cabal/bin/alex /usr/bin
-RUN sudo ln -s /home/codeworld/.cabal/bin/happy /usr/bin
-
+RUN cabal v2-install alex
+RUN cabal v2-install happy-1.19.9 --overwrite-policy=always
 
 RUN git clone --recurse-submodules --branch ghc-8.6 --single-branch https://github.com/ghcjs/ghcjs.git /codeworld/build/ghcjs
 
@@ -71,17 +60,9 @@ RUN mv /codeworld/build/bin/ghcjs-boot-new /codeworld/build/bin/ghcjs-boot
 RUN mv /codeworld/build/bin/ghcjs-run-new /codeworld/build/bin/ghcjs-run
 RUN mv /codeworld/build/bin/ghcjs-dumparchive-new /codeworld/build/bin/ghcjs-dumparchive
 
-RUN sudo ln -s /codeworld/build/bin/haddock-ghcjs /usr/bin
-
-
-RUN sudo ln -s /home/codeworld/.ghcup/bin/hsc2hs /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/hsc2hs-8.6 /usr/bin
-RUN sudo ln -s /home/codeworld/.ghcup/bin/hsc2hs-8.6.5 /usr/bin
-
-
 WORKDIR /codeworld/build/ghcjs
 
-RUN /codeworld/build/bin/ghcjs-boot -j1 --no-prof --no-haddock -s lib/boot/ --with-ghcjs-bin /codeworld/build/bin
+RUN ghcjs-boot -j1 --no-prof --no-haddock -s lib/boot/ --with-ghcjs-bin /codeworld/build/bin
 
 ## Install tools to build CodeMirror editor.
 
@@ -112,29 +93,28 @@ RUN /codeworld/mirror/get_mirrored
 
 RUN bash -c "source base.sh && cabal_install --ghcjs ./codeworld-prediction ./codeworld-error-sanitizer ./codeworld-api ./codeworld-base ./codeworld-game-api ./codeworld-available-pkgs"
 
-RUN /codeworld/build/bin/ghcjs-pkg hide base-compat
-RUN /codeworld/build/bin/ghcjs-pkg hide ghcjs-dom-jsffi
-RUN /codeworld/build/bin/ghcjs-pkg hide matrices
-RUN /codeworld/build/bin/ghcjs-pkg hide simple-affine-space
-RUN /codeworld/build/bin/ghcjs-pkg hide newtype
-RUN /codeworld/build/bin/ghcjs-pkg hide non-empty
-RUN /codeworld/build/bin/ghcjs-pkg hide hgeometry-combinatorial
-RUN /codeworld/build/bin/ghcjs-pkg hide Cabal
-RUN /codeworld/build/bin/ghcjs-pkg hide cabal-doctest
-RUN /codeworld/build/bin/ghcjs-pkg hide some
+RUN ghcjs-pkg hide base-compat
+RUN ghcjs-pkg hide ghcjs-dom-jsffi
+RUN ghcjs-pkg hide matrices
+RUN ghcjs-pkg hide simple-affine-space
+RUN ghcjs-pkg hide newtype
+RUN ghcjs-pkg hide non-empty
+RUN ghcjs-pkg hide hgeometry-combinatorial
+RUN ghcjs-pkg hide Cabal
+RUN ghcjs-pkg hide cabal-doctest
+RUN ghcjs-pkg hide some
 
 RUN node /codeworld/build/bin/find-dup-modules.jsexe/all.js /home/codeworld/.ghcjs/x86_64-linux-8.6.0.1-8.6.5/ghcjs/package.conf.d/package.cache
 
 WORKDIR /codeworld/codeworld-base
 
-RUN sudo ln -s /codeworld/build/bin/ghcjs /usr/bin
-RUN sudo ln -s /codeworld/build/bin/ghcjs-pkg /usr/bin
-
 RUN cabal configure --ghcjs
 RUN cabal haddock --html
 RUN cabal haddock --hoogle
 
-RUN grep -r -s -h 'pattern\s*[A-Za-z_0-9]*\s*::.*' . > /codeworld/web/codeworld-base.txt
+RUN rm /codeworld/web/codeworld-base.txt
+RUN cp /codeworld/codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt /codeworld/web/codeworld-base.txt
+RUN grep -r -s -h 'pattern\s*[A-Za-z_0-9]*\s*::.*' . >> /codeworld/web/codeworld-base.txt
 
 WORKDIR /codeworld/codeworld-api
 
@@ -154,51 +134,27 @@ RUN node_modules/uglify-js/bin/uglifyjs lib/codemirror.js addon/dialog/dialog.js
 
 WORKDIR /codeworld
 
-RUN rm /codeworld/web/mirrored
+RUN rm -r /codeworld/web/mirrored /codeworld/web/ims /codeworld/web/help/ims /codeworld/web/blockly /codeworld/web/SourceCodePro /codeworld/web/doc /codeworld/web/doc-haskell
 
 RUN cp -r /codeworld/build/mirrored/ /codeworld/web/mirrored
-
 RUN cp /codeworld/build/CodeMirror/codemirror-compressed.js /codeworld/web/js/codemirror-compressed.js
-
-RUN rm /codeworld/web/SourceCodePro
-
 RUN cp -r /codeworld/third_party/SourceCodePro /codeworld/web/SourceCodePro
-
 RUN cp /codeworld/third_party/jsdiff/diff.min.js /codeworld/web/js/diff.min.js
-
 RUN cp /codeworld/third_party/details-element-polyfill/details-element-polyfill.js /codeworld/web/js/details-element-polyfill.js
-
 RUN cp /codeworld/third_party/codemirror-buttons/buttons.js /codeworld/web/js/codemirror-buttons/buttons.js
-
-RUN rm /codeworld/web/doc
-
 RUN cp -r /codeworld/codeworld-base/dist/doc/html/codeworld-base /codeworld/web/doc
-
-RUN rm /codeworld/web/doc-haskell
-
 RUN cp -r /codeworld/codeworld-api/dist/doc/html/codeworld-api /codeworld/web/doc-haskell
-
 RUN cp /codeworld/web/env.html /codeworld/web/index.html
-
 RUN cp /codeworld/web/gallery.html /codeworld/web/gallery-icfp17.html
-
-RUN rm /codeworld/web/blockly
-
 RUN cp -r /codeworld/third_party/blockly /codeworld/web/blockly
-
 RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/lib.js /codeworld/web/js/blocks_lib.js
 RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/out.js /codeworld/web/js/blocks_out.js
 RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/rts.js /codeworld/web/js/blocks_rts.js
 RUN cp /codeworld/funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/runmain.js /codeworld/web/js/blocks_runmain.js
-
 RUN cp /codeworld/build/CodeMirror/theme/ambiance.css /codeworld/web/css/ambiance.css
 RUN cp /codeworld/build/CodeMirror/lib/codemirror.css /codeworld/web/css/codemirror.css
 RUN cp /codeworld/build/CodeMirror/addon/lint/lint.css /codeworld/web/css/lint.css
 RUN cp /codeworld/build/CodeMirror/addon/hint/show-hint.css /codeworld/web/css/show-hint.css
-
-RUN rm -r /codeworld/web/ims
-RUN rm /codeworld/web/help/ims
-
 RUN cp -r /codeworld/third_party/MaterialDesign /codeworld/web/ims
 RUN cp -r /codeworld/third_party/MaterialDesign /codeworld/web/help/ims
 
