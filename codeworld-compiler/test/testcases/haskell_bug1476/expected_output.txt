@@ -1,3 +1,5 @@
+: [1 of 1] Compiling Main             ( program.hs, nothing )
+
 program.hs:8:5-13: error:
     Unexpected do block in function application:
         do rec

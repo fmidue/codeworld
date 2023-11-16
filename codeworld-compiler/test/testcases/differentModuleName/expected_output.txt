@@ -1,0 +1,1 @@
+: [1 of 1] Compiling Some.Other.Name  ( program.hs, nothing )

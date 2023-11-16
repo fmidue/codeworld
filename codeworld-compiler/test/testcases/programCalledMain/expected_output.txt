@@ -1,3 +1,5 @@
+: [1 of 1] Compiling Main             ( program.hs, nothing )
+
 program.hs:1:1: error:
     The variable program is not defined in your code
 

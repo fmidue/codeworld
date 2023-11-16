@@ -1,2 +1,4 @@
+: [1 of 1] Compiling Main             ( program.hs, nothing )
+
 program.hs:1:1-15: warning:
     The import of Sketches is redundant

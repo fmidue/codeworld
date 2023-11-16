@@ -5,7 +5,7 @@ Description: matchesExpected success
 Rules:
  - matchesExpected:
     variable: program
-    hash: 12076
+    hash: 539725
 -}
 
 program = drawingOf(codeWorldLogo)

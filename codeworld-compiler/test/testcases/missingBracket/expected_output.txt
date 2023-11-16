@@ -1,3 +1,5 @@
+: [1 of 1] Compiling Main             ( program.hs, nothing )
+
 program.hs:17:1: error:
     parse error
     • If this line continues the previous definition, indent it.

@@ -1,3 +1,5 @@
+: [1 of 1] Compiling Main             ( program.hs, nothing )
+
 program.hs:16:21-33: error:
     Ambiguous occurrence codeWorldLogo
     It could refer to either codeWorldLogo,

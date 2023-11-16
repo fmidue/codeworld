@@ -1,10 +1,12 @@
+: [1 of 1] Compiling Main             ( program.hs, nothing )
+
 :                     :: REQUIREMENTS ::
 Obfuscated:
 
     XREQUIRES
     eJyLVorJi8lzSS1OLsosKMnMz7NSyE0sSc5ILXatKEhNLklNUSguTU5OLS6O
-    yQsqzUkttorJU9BFVwMSBIKyxKLMxKScVCuFgqL89KLEXIhwRmJxhpWCoZGB
-    uVlMnlIsAJWzKCo=
+    yQsqzUkttorJU9BFVwMSBIKyxKLMxKScVCuFgqL89KLEXIhwRmJxhpWCqbGl
+    uZFpTJ5SLAC9/ihp
 
 [Y] matchesExpected success
                   :: END REQUIREMENTS ::

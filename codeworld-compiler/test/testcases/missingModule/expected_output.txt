@@ -1,2 +1,4 @@
+: [1 of 1] Compiling Main             ( program.hs, nothing )
+
 program.hs:16:1-24: error:
     Could not find module NonExistentModule
