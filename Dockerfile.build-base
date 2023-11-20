@@ -1,0 +1,36 @@
+FROM debian:bookworm
+
+RUN apt-get update && apt-get upgrade -y
+
+RUN apt-get install -y python3 build-essential curl libffi-dev libffi8 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 sudo pkg-config git wget bzip2 xz-utils psmisc zlib1g-dev  make gcc g++ gnupg patch autoconf automake libtinfo-dev libssl-dev ca-certificates
+RUN curl -sSf https://downloads.haskell.org/~ghcup/$(uname -m)-$(uname -s | awk '{print tolower($0)}')-ghcup > /usr/bin/ghcup && chmod +x /usr/bin/ghcup
+
+RUN useradd -ms /bin/bash codeworld
+
+RUN echo "codeworld ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+WORKDIR /home/codeworld
+RUN chown codeworld:codeworld .
+USER codeworld
+
+RUN ghcup upgrade
+RUN ghcup install 8.6.5
+RUN ghcup set 8.6.5
+RUN ghcup install-cabal 2.4.1.0
+
+ENV PATH /home/codeworld/.ghcup/bin:$PATH
+
+RUN cabal update --index-state='2023-02-09T01:33:22Z'
+
+RUN cabal v2-install alex
+RUN cabal v2-install happy-1.19.9 --overwrite-policy=always
+
+ENV PATH /home/codeworld/.cabal/bin:$PATH
+
+RUN sudo mkdir -p /etc/apt/keyrings
+
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+
+RUN sudo apt-get update && sudo apt-get install nodejs -y
