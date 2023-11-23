@@ -137,7 +137,7 @@ RUN rm web/codeworld-base.txt
 RUN cp codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt web/codeworld-base.txt
 RUN grep -r -s -h 'pattern\s*[A-Za-z_0-9]*\s*::.*' /home/codeworld/codeworld-base >> /home/codeworld/web/codeworld-base.txt
 
-RUN rm -r web/mirrored web/ims web/help/ims web/blockly web/SourceCodePro web/doc web/doc-haskell
+RUN rm -r web/mirrored web/ims web/help/ims web/blockly web/SourceCodePro web/doc web/doc-haskell web/gallery.html
 
 RUN cp -r build/mirrored/ web/mirrored
 RUN cp build/CodeMirror/codemirror-compressed.js web/js/codemirror-compressed.js
@@ -148,7 +148,7 @@ RUN cp third_party/codemirror-buttons/buttons.js web/js/codemirror-buttons/butto
 RUN cp -r codeworld-base/dist/doc/html/codeworld-base web/doc
 RUN cp -r codeworld-api/dist/doc/html/codeworld-api web/doc-haskell
 RUN cp web/env.html web/index.html
-RUN cp web/gallery.html web/gallery-icfp17.html
+# RUN cp web/gallery.html web/gallery-icfp17.html
 RUN cp -r third_party/blockly web/blockly
 RUN cp funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/lib.js web/js/blocks_lib.js
 RUN cp funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/out.js web/js/blocks_out.js
