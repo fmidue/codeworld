@@ -1801,24 +1801,24 @@ function initDirectoryTree(isEditorClean, loadProjectHandler, clearEditor) {
   $('#directoryTree').on('tree.select', (event) => {
     const selectedNode = DirTree.getSelectedNode();
 
-    const $deleteButton = $('#deleteButton');
-    const $saveButton = $('#saveButton');
-    const $downloadButton = $('#downloadButton');
-    const $shareFolderButton = $('#shareFolderButton');
+    // const $deleteButton = $('#deleteButton');
+    // const $saveButton = $('#saveButton');
+    // const $downloadButton = $('#downloadButton');
+    // const $shareFolderButton = $('#shareFolderButton');
 
-    $deleteButton.show();
+    // $deleteButton.show();
 
-    if (DirTree.isProject(selectedNode)) {
-      $saveButton.show();
-      $downloadButton.show();
+    // if (DirTree.isProject(selectedNode)) {
+    //   $saveButton.show();
+    //   $downloadButton.show();
 
-      $shareFolderButton.hide();
-    } else {
-      $saveButton.hide();
-      $downloadButton.hide();
+    //   $shareFolderButton.hide();
+    // } else {
+    //   $saveButton.hide();
+    //   $downloadButton.hide();
 
-      $shareFolderButton.show();
-    }
+    //   $shareFolderButton.show();
+    // }
 
     updateDocumentTitle();
   });
@@ -1966,10 +1966,10 @@ function run(hash, dhash, msg, error, generation) {
 
   if (hash) {
     window.location.hash = `#${hash}`;
-    document.getElementById('shareButton').style.display = '';
+    // document.getElementById('shareButton').style.display = '';
   } else {
     window.location.hash = '';
-    document.getElementById('shareButton').style.display = 'none';
+    // document.getElementById('shareButton').style.display = 'none';
   }
 
   if (dhash) {
@@ -1987,18 +1987,18 @@ function run(hash, dhash, msg, error, generation) {
     document.getElementById('startRecButton').style.display = 'none';
   }
 
-  const $shareFolderButton = $('#shareFolderButton');
+  // const $shareFolderButton = $('#shareFolderButton');
   const layoutHandler = $(LAYOUT_CONTAINER_CLASSNAME).layout();
 
   if (hash || msg) {
-    $shareFolderButton.hide();
+    // $shareFolderButton.hide();
 
     layoutHandler.show('east');
     layoutHandler.open('east');
   } else {
-    if ($shareFolderButton.css('display') !== 'none') {
-      $shareFolderButton.show();
-    }
+    // if ($shareFolderButton.css('display') !== 'none') {
+    //   $shareFolderButton.show();
+    // }
 
     layoutHandler.hide('east');
   }
