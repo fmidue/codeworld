@@ -20,7 +20,6 @@ run . rm -rf data/*/build
 rm -rf $(for fn in $(find data/base -atime +20 -regex .*\\.js$ ); do dirname $fn; done)
 
 fuser -k -n tcp 8080
-fuser -k -n tcp 9160
 
 # Run migration of project directory structure for codeworld-server.
 mkdir -p data/codeworld/projects
@@ -29,5 +28,4 @@ mkdir -p data/blocklyXML/projects
 
 mkdir -p log
 
-codeworld-game-server +RTS -T &
 run .  codeworld-server -p 8080 --no-access-log
