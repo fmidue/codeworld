@@ -381,6 +381,7 @@ compileHandler = public $ \ctx -> do
     B.writeFile (sourceRootDir mode </> sourceFile programId) source
     writeDeployLink mode deployId programId
     compileIfNeeded ctx mode programId
+  liftIO $ removeDirectoryIfExists (sourceRootDir mode)
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus status)
   modifyResponse $ setContentType "text/plain"
   let result = CompileResult (unProgramId programId) (unDeployId deployId)
