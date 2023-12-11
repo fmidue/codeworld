@@ -381,11 +381,20 @@ compileHandler = public $ \ctx -> do
     B.writeFile (sourceRootDir mode </> sourceFile programId) source
     writeDeployLink mode deployId programId
     compileIfNeeded ctx mode programId
-  liftIO $ removeDirectoryIfExists (sourceRootDir mode)
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus status)
   modifyResponse $ setContentType "text/plain"
-  let result = CompileResult (unProgramId programId) (unDeployId deployId)
-  writeLBS (encode result)
+  content <- liftIO $ readFile (buildRootDir mode </> resultFile programId)
+  target <- liftIO $ readFile (buildRootDir mode </> targetFile programId)
+  let id = unProgramId programId
+  let did = unDeployId deployId
+  let msg = T.pack content
+  let tar = T.pack target
+  let body = T.intercalate "\n=======================\n" [id,did,msg,tar]
+  writeBS $ T.encodeUtf8 body
+  liftIO $ removeDirectoryIfExists (sourceRootDir mode)
+  liftIO $ removeDirectoryIfExists (buildRootDir mode)
+  liftIO $ removeDirectoryIfExists (projectRootDir mode)
+  liftIO $ removeDirectoryIfExists (deployRootDir mode)
 
 errorCheckHandler :: CodeWorldHandler
 errorCheckHandler = public $ \ctx -> do

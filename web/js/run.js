@@ -241,21 +241,22 @@ function init() {
     params[name] = value;
   }
 
-  const hash = params['hash'];
-  const dhash = params['dhash'];
-  let mode = params['mode'];
+  // const hash = params['hash'];
+  // const dhash = params['dhash'];
+  // let mode = params['mode'];
 
-  if (!mode) mode = 'codeworld';
+  // if (!mode) mode = 'codeworld';
 
-  let query = `?mode=${encodeURIComponent(mode)}`;
-  if (hash) query += `&hash=${encodeURIComponent(hash)}`;
-  if (dhash) query += `&dhash=${encodeURIComponent(dhash)}`;
+  // let query = `?mode=${encodeURIComponent(mode)}`;
+  // if (hash) query += `&hash=${encodeURIComponent(hash)}`;
+  // if (dhash) query += `&dhash=${encodeURIComponent(dhash)}`;
 
-  const uri = `runJS${query}`;
+  // const uri = `runJS${query}`;
 
   const loadScript = document.createElement('script');
   loadScript.setAttribute('type', 'text/javascript');
-  loadScript.setAttribute('src', uri);
+  // loadScript.setAttribute('src', uri);
+  loadScript.innerHTML = atob(params['code']);
   document.body.appendChild(loadScript);
 }
 

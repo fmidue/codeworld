@@ -1187,17 +1187,27 @@ function compile() {
     window.cancelCompile();
 
     const success = status === 200;
+    const parts = responseText.split('\n=======================\n')
 
-    let hash, dhash;
+    let hash, dhash, msg;
     if (status < 500) {
       if (responseText.length === 23) {
-        hash = responseText;
+        // will not happen
+	      hash = responseText;
         dhash = null;
-      } else {
+      } else {	
         try {
-          const obj = JSON.parse(responseText);
-          hash = obj.hash;
-          dhash = obj.dhash;
+          hash = parts[0];
+          dhash = parts[1];
+          msg = parts[2];
+          if(msg) {
+              msg = msg.replace(/^[\r\n]+|[\r\n]+$/g, '');
+          } else {
+            msg = 'Sorry!  Your program couldn\'t be run right now.';
+          }
+
+          window.program = parts[3];
+          run(hash,dhash,msg,false,compileGeneration);
         } catch (e) {
           hash = '';
         }
@@ -1211,8 +1221,11 @@ function compile() {
         type: 'error',
       });
       return;
+    } else {
+      sweetAlert.close();
     }
 
+	  /*
     const data = new FormData();
     data.append('hash', hash);
     data.append('mode', window.buildMode);
@@ -1234,7 +1247,7 @@ function compile() {
         sweetAlert.close();
         run(hash, '', msg, true, compileGeneration);
       }
-    });
+    });*/
   });
 }
 
