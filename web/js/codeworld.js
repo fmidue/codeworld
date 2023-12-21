@@ -299,7 +299,7 @@ async function init() {
       hash = hash.slice(0, -2);
     }
     if (hash[0] === 'P') {
-      sendHttp(
+      /*sendHttp(
         'GET',
         `loadSource?hash=${hash}&mode=${window.buildMode}`,
         null,
@@ -308,7 +308,8 @@ async function init() {
             setCode(request.responseText, null, true);
           }
         }
-      );
+      );*/
+      setCode(localStorage.getItem(`${window.buildMode}-${hash}`) || '');
     } else if (hash[0] !== 'F') {
       setCode('');
     }
@@ -1208,6 +1209,7 @@ function compile() {
 
           window.program = parts[3];
           run(hash,dhash,msg,false,compileGeneration);
+          localStorage.setItem(`${window.buildMode}-${hash}`, window.codeworldEditor.getValue());
         } catch (e) {
           hash = '';
         }
