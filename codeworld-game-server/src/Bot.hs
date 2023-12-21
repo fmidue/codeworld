@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import CodeWorld
+import CodeWorld hiding (String)
 {-
   Copyright 2020 The CodeWorld Authors. All rights reserved.
 

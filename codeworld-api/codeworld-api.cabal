@@ -37,6 +37,7 @@ Library
                        CodeWorld.Parameter,
                        CodeWorld.Reflex,
                        CodeWorld.Sketches
+                       CodeWorld.FMIDUE
   Other-modules:       CodeWorld.CanvasM,
                        CodeWorld.CollaborationUI,
                        CodeWorld.Color,

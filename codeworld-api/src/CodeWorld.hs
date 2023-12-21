@@ -116,10 +116,22 @@ module CodeWorld
 
     -- * Debugging
     trace,
+
+    -- * FMIDUE
+    move,
+    print,
+    rotate,
+    path,
+    color,
+    scale,
+    Points,
+    String
   )
 where
 
+import Prelude ((<>))
 import CodeWorld.Color
 import CodeWorld.EntryPoints
 import CodeWorld.Event
 import CodeWorld.Picture
+import CodeWorld.FMIDUE

@@ -116,6 +116,16 @@ module Internal.Exports
 
     -- * Debugging
     traced,
+    
+    -- * FMIDUE
+    move,
+    print,
+    rotate,
+    path,
+    color,
+    scale,
+    Points,
+    String
   )
 where
 
@@ -127,3 +137,4 @@ import Internal.Picture
 import Internal.Prelude
 import Internal.Text
 import "base" Prelude (IO)
+import Internal.FMIDUE

@@ -38,6 +38,7 @@ Library
                        Internal.Event,
                        Internal.CodeWorld,
                        Internal.Truth
+                       Internal.FMIDUE
   if impl(ghcjs -any)
     Build-depends:       base,
                          bytestring,
