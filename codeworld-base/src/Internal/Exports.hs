@@ -125,7 +125,8 @@ module Internal.Exports
     color,
     scale,
     Points,
-    String
+    String,
+    Float
   )
 where
 

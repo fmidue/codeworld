@@ -13,6 +13,9 @@ type Points = [Point]
 -- | Unicode text. 
 type String = Text
 
+-- | The type for numbers.
+type Float = Number
+
 -- | A picture rotated by this angle about the origin.
 --
 -- Angles are in radians.
