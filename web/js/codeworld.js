@@ -314,7 +314,11 @@ async function init() {
       setCode('');
     }
   } else {
-    setCode('');
+    if(window.buildMode === "codeworld") setCode(`import Prelude hiding (rotated,translated,colored,lettering,scaled,polyline,Text,Number)
+
+program = drawingOf(picture & coordinatePlane)
+
+picture = ...`);
   }
 }
 
