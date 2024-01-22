@@ -16,6 +16,11 @@
 
 source base.sh
 
+if [[ -z "$PORT" ]]; then
+    PORT=8080
+    echo "No PORT specified. Defaulting to $PORT."
+fi
+
 run . rm -rf data/*/build
 rm -rf $(for fn in $(find data/base -atime +20 -regex .*\\.js$ ); do dirname $fn; done)
 
@@ -28,4 +33,4 @@ mkdir -p data/blocklyXML/projects
 
 mkdir -p log
 
-run .  codeworld-server -p 8080 --no-access-log
+run .  codeworld-server -p $PORT --no-access-log
