@@ -383,14 +383,20 @@ compileHandler = public $ \ctx -> do
     compileIfNeeded ctx mode programId
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus status)
   modifyResponse $ setContentType "text/plain"
-  content <- liftIO $ readFile (buildRootDir mode </> resultFile programId)
-  target <- liftIO $ readFile (buildRootDir mode </> targetFile programId)
   let id = unProgramId programId
   let did = unDeployId deployId
-  let msg = T.pack content
-  let tar = T.pack target
-  let body = T.intercalate "\n=======================\n" [id,did,msg,tar]
-  writeBS $ T.encodeUtf8 body
+  hasResultFile <- liftIO $ doesFileExist (buildRootDir mode </> resultFile programId)
+  when (status == CompileSuccess && hasResultFile) $ do
+    content <- liftIO $ readFile (buildRootDir mode </> resultFile programId)
+    target <- liftIO $ readFile (buildRootDir mode </> targetFile programId)
+    let body = T.intercalate "\n=======================\n" [id,did,T.pack content,T.pack target]
+    writeBS $ T.encodeUtf8 body
+  when (status /= CompileSuccess && hasResultFile) $ do
+    content <- liftIO $ readFile (buildRootDir mode </> resultFile programId)
+    let body = T.intercalate "\n=======================\n" [id,did,T.pack content]
+    writeBS $ T.encodeUtf8 body
+  unless (hasResultFile) $ do
+    writeBS $ T.encodeUtf8 "Something went wrong"
   liftIO $ removeDirectoryIfExists (sourceRootDir mode)
   liftIO $ removeDirectoryIfExists (buildRootDir mode)
   liftIO $ removeDirectoryIfExists (projectRootDir mode)
