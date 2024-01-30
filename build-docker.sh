@@ -29,3 +29,9 @@ docker rm -v $ID
 tar -xvf extracted.tar
 
 rm extracted.tar
+
+# Copy keter config into keter file
+
+echo "Copying keter config into keter file..."
+
+tar -rvf codeworld.keter config/keter.yaml

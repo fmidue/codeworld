@@ -1,0 +1,20 @@
+user-edited: true
+
+stanzas:
+  # backend application.
+  - type: webapp
+
+    exec: ../run.sh
+    args:
+      - Production
+
+    env:
+      LANG: "C.UTF-8"
+      LC_ALL: "C.UTF-8"
+      GHC_PACKAGE_PATH: "/codeworld/default/pkgdb"
+      PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+    hosts:
+      - codeworld.backend.server.url
+
+    requires-secure: false
