@@ -1,8 +1,9 @@
-FROM debian:bookworm as base
+FROM ubuntu:20.04 as base
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get upgrade -y
 
-RUN apt-get install -y python3 build-essential curl libffi-dev libffi8 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 sudo pkg-config git wget bzip2 xz-utils psmisc zlib1g-dev  make gcc g++ gnupg patch autoconf automake libtinfo-dev libssl-dev ca-certificates
+RUN apt-get install -y python3 build-essential curl libffi-dev libffi7 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 sudo pkg-config git wget bzip2 xz-utils psmisc zlib1g-dev  make gcc g++ gnupg patch autoconf automake libtinfo-dev libssl-dev ca-certificates
 RUN curl -sSf https://downloads.haskell.org/~ghcup/$(uname -m)-$(uname -s | awk '{print tolower($0)}')-ghcup > /usr/bin/ghcup && chmod +x /usr/bin/ghcup
 
 RUN useradd -ms /bin/bash codeworld
