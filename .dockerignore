@@ -1,1 +1,4 @@
 Dockerfile
+build-docker.sh
+codeworld.keter
+config/
