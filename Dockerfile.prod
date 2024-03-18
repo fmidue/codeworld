@@ -211,12 +211,14 @@ user-edited: true
 stanzas:
   - type: webapp
 
-    exec: ../run.sh
+    exec: "/home/codeworld/build/bin/codeworld-server"
+    args:
+      - --no-access-log
 
     env:
       LANG: "C.UTF-8"
       LC_ALL: "C.UTF-8"
-      PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/codeworld/build/bin"
 
     hosts:
       - localhost
@@ -228,9 +230,15 @@ RUN <<EOF
 mkdir tar
 cd tar
 tar xf ../codeworld.keter
+mkdir -p /home/codeworld
+mv .cabal /home/codeworld
+mv .ghcjs /home/codeworld
+mv build/ /home/codeworld
+# mv codeworld-base/ /home/codeworld
+# mv web/ /home/codeworld
 cd -
 rm -rf codeworld.keter
-tar czf codeworld.keter config/keter.yaml -C tar .cabal .ghcjs base.sh build codeworld-base run.sh web
+tar czf codeworld.keter config/keter.yaml -C tar codeworld-base web
 rm -rf tar
 mv /root/codeworld.keter /opt/keter/incoming/codeworld.keter
 EOF

@@ -18,20 +18,20 @@ docker buildx build --load --cache-from=type=local,src=.cache/dist --cache-to=ty
 
 # Copy keter file from image
 
-echo "Copying keter file from image..."
+# echo "Copying keter file from image..."
 
-ID=$(docker create codeworld:fmi)
+# ID=$(docker create codeworld:fmi)
 
-docker cp $ID:/home/codeworld/codeworld.keter - > extracted.tar
+# docker cp $ID:/home/codeworld/codeworld.keter - > extracted.tar
 
-docker rm -v $ID
+# docker rm -v $ID
 
-tar -xvf extracted.tar
+# tar -xvf extracted.tar
 
-rm extracted.tar
+# rm extracted.tar
 
-# Copy keter config into keter file
+# # Copy keter config into keter file
 
-echo "Copying keter config into keter file..."
+# echo "Copying keter config into keter file..."
 
-tar -rvf codeworld.keter config/keter.yaml
+# tar -rvf codeworld.keter config/keter.yaml

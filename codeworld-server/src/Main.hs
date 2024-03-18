@@ -60,14 +60,17 @@ import Model
 import Network.HTTP.Simple
 import Ormolu (OrmoluException, defaultConfig, ormolu)
 import Snap.Core
-import Snap.Http.Server (quickHttpServe)
+import Snap.Http.Server (httpServe)
+import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setPort)
 import Snap.Util.FileServe
 import Snap.Util.FileUploads
 import System.Directory
 import System.FileLock
 import System.FilePath
 import System.IO.Temp
+import System.Environment (lookupEnv)
 import Util
+import Text.Read (readMaybe)
 
 maxSimultaneousCompiles :: Int
 maxSimultaneousCompiles = 4
@@ -85,8 +88,10 @@ data Context = Context
 main :: IO ()
 main = do
   ctx <- makeContext
+  port <- maybe Nothing readMaybe <$> lookupEnv "PORT" :: IO (Maybe Int)
+  cfg <- S.commandLineConfig ((maybe id (\p -> S.setPort p) port) S.defaultConfig)
   forkIO $ baseVersion >>= buildBaseIfNeeded ctx >> return ()
-  quickHttpServe $ (processBody >> site ctx) <|> site ctx
+  httpServe cfg $ (processBody >> site ctx) <|> site ctx
 
 makeContext :: IO Context
 makeContext = do
