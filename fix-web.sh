@@ -28,14 +28,6 @@ cp web/env.html web/index.html
 
 cp -r third_party/blockly web/blockly
 
-cp funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/lib.js web/js/blocks_lib.js
-
-cp funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/out.js web/js/blocks_out.js
-
-cp funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/rts.js web/js/blocks_rts.js
-
-cp funblocks-client/dist/build/funblocks-client/funblocks-client.jsexe/runmain.js web/js/blocks_runmain.js
-
 cp build/CodeMirror/theme/ambiance.css web/css/ambiance.css
 
 cp build/CodeMirror/lib/codemirror.css web/css/codemirror.css
