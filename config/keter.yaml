@@ -1,20 +1,17 @@
 user-edited: true
-
 stanzas:
-  # backend application.
   - type: webapp
 
-    exec: ../run.sh
+    exec: "/opt/codeworld/build/bin/codeworld-server"
     args:
-      - Production
+      - --no-access-log
 
     env:
       LANG: "C.UTF-8"
       LC_ALL: "C.UTF-8"
-      GHC_PACKAGE_PATH: "/codeworld/default/pkgdb"
-      PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/codeworld/build/bin"
 
     hosts:
-      - codeworld.backend.server.url
+      - localhost
 
     requires-secure: false

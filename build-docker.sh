@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 set -eux
 
@@ -14,24 +14,31 @@ docker buildx create --use --name=codeworld-builder --driver docker-container --
 
 echo "Building the dist image..."
 
-docker buildx build --load --cache-from=type=local,src=.cache/dist --cache-to=type=local,dest=.cache/dist,mode=max --tag codeworld:fmi --file Dockerfile.prod .
+docker buildx build --load --cache-to=type=local,dest=.cache/dist,mode=max --tag codeworld:fmi --file Dockerfile.prod .
 
 # Copy keter file from image
 
-# echo "Copying keter file from image..."
+docker create --name codeworld codeworld:fmi
 
-# ID=$(docker create codeworld:fmi)
+docker cp codeworld:/opt/keter/incoming/codeworld.keter codeworld.keter
 
-# docker cp $ID:/home/codeworld/codeworld.keter - > extracted.tar
+docker rm codeworld
 
-# docker rm -v $ID
+TMPDIR=$(mktemp -d)
+ARCHIVEPATH="$(pwd)/codeworld.keter"
 
-# tar -xvf extracted.tar
+# Create bundle
 
-# rm extracted.tar
+cd $TMPDIR
 
-# # Copy keter config into keter file
+echo "Tempdir: $TMPDIR"
 
-# echo "Copying keter config into keter file..."
+tar xf "$ARCHIVEPATH"
 
-# tar -rvf codeworld.keter config/keter.yaml
+cd -
+
+rm -rf codeworld.keter
+
+tar czf codeworld.keter config/keter.yaml -C $TMPDIR .cabal/ .ghcjs/ base.sh run.sh build/ codeworld-base/ web/
+
+rm -rf $TMPDIR
