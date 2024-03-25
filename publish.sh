@@ -1,9 +1,9 @@
 #!/usr/bin/env zsh
 
-USER=niklas
+USER=
 GROUP=${USER}
 SSH_USER=${USER}
-SERVER=192.168.178.68
+SERVER=
 JUMP_HOST=
 PORT=22
 
