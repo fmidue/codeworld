@@ -480,25 +480,26 @@ function onAuthDisabled() {
 }
 
 function init(initCallback) {
-  sendHttp('GET', 'authMethod', null, (response) => {
-    if (response.status === 200) {
-      const obj = JSON.parse(response.responseText);
+  // sendHttp('GET', 'authMethod', null, (response) => {
+  //   if (response.status === 200) {
+  //     const obj = JSON.parse(response.responseText);
 
-      switch (obj.authMethod) {
-      case 'Local':
-        onAuthInitialized(LocalAuth().init(), initCallback);
-        break;
-      case 'Google':
-        initGoogleAuth(initCallback);
-        break;
-      default:
-        onAuthDisabled();
-        break;
-      }
-    } else {
-      onAuthDisabled();
-    }
-  });
+  //     switch (obj.authMethod) {
+  //     case 'Local':
+  //       onAuthInitialized(LocalAuth().init(), initCallback);
+  //       break;
+  //     case 'Google':
+  //       initGoogleAuth(initCallback);
+  //       break;
+  //     default:
+  //       onAuthDisabled();
+  //       break;
+  //     }
+  //   } else {
+  //     onAuthDisabled();
+  //   }
+  // });
+  onAuthDisabled();
 }
 
 function signIn(callback) {
