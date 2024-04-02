@@ -419,12 +419,6 @@ function initCodeworld() {
         callback: (cm) => newProject(),
       },
       {
-        class: 'cw-toolbar-button mdi mdi-content-save',
-        label: '',
-        title: 'Save',
-        callback: (cm) => saveProject(),
-      },
-      {
         class: 'cw-toolbar-button mdi mdi-file-find',
         label: '',
         title: 'Search',
