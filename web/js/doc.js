@@ -280,6 +280,9 @@ window.onscroll = (event) => {
   function loadPath(path) {
     if (!path && shelf) path = shelf.default || shelf.named[0][1];
     position.path = path;
+
+    if(!new RegExp('^\\/?(\\w+\\/)*(\\w+\\.[a-zA-Z0-9]{2,})$', 'gm').test(new URL(path).pathname))return;
+
     if (contents[path] && contents[path].elem) {
       setContent(contents[path].elem);
     } else {
