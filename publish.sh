@@ -29,6 +29,7 @@ ssh ${JUMP_HOST:+-J} ${JUMP_HOST:+"${JUMP_HOST}"}\
   && cd ${REMOTE_DIR}/codeworld\
   && tar xf ../$KET\
   && rm ${REMOTE_DIR}/$KET\
+  && rm -f ${TARGET_FOLDER}\
   && ln -sf ${REMOTE_DIR}/codeworld ${TARGET_FOLDER} \
   && tar czf ${REMOTE_DIR}/$KET -C ${REMOTE_DIR}/codeworld config/ codeworld-base/ web/ \
   && mv ${REMOTE_DIR}/$KET /opt/keter/incoming"
