@@ -19,17 +19,20 @@ then
 fi
 
 ssh ${JUMP_HOST:+-J} ${JUMP_HOST:+"${JUMP_HOST}"}\
-  -p "${PORT}" "${USER}@${SERVER}" -C "mkdir -p ${REMOTE_DIR}"
+  -p "${PORT}" "${SSH_USER}@${SERVER}" -C "mkdir -p ${REMOTE_DIR}"
 
 scp ${JUMP_HOST:+-J} ${JUMP_HOST:+"${JUMP_HOST}"}\
-  -P "${PORT}" "$KET" "${USER}@${SERVER}:${REMOTE_DIR}/$KET"
+  -P "${PORT}" "$KET" "${SSH_USER}@${SERVER}:${REMOTE_DIR}/$KET"
 
 ssh ${JUMP_HOST:+-J} ${JUMP_HOST:+"${JUMP_HOST}"}\
-  -p "${PORT}" "${USER}@${SERVER}" -C "mkdir -p ${REMOTE_DIR}/codeworld\
+  -p "${PORT}" "${SSH_USER}@${SERVER}" -C "set -x trace && mkdir -p ${REMOTE_DIR}/codeworld\
   && cd ${REMOTE_DIR}/codeworld\
   && tar xf ../$KET\
   && rm ${REMOTE_DIR}/$KET\
   && rm -f ${TARGET_FOLDER}\
+  && chown -R ${USER}:${GROUP} ${REMOTE_DIR}\
   && ln -sf ${REMOTE_DIR}/codeworld ${TARGET_FOLDER} \
   && tar czf ${REMOTE_DIR}/$KET -C ${REMOTE_DIR}/codeworld config/ codeworld-base/ web/ \
-  && mv ${REMOTE_DIR}/$KET /opt/keter/incoming"
+  && chown ${USER}:${GROUP} ${REMOTE_DIR}/${KET}\
+  && mv ${REMOTE_DIR}/${KET} /opt/keter/incoming\
+  && service keter restart"
