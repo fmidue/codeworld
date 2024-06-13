@@ -1045,6 +1045,12 @@ window.addEventListener('message', (event) => {
   case 'debugFinished':
     window.debugActive = false;
     break;
+  case 'sendProgram':
+    document.getElementById('runner').contentWindow.postMessage({
+      type: "loadProgram",
+      program: window.program ? btoa(window.program) : undefined
+    });
+    break;
   default:
     break;
   }
