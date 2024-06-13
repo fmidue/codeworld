@@ -37,6 +37,11 @@ window.addEventListener('message', (event) => {
     if (canvasRecorder && canvasRecorder.recorder.state === 'recording') {
       canvasRecorder.recorder.stop();
     }
+  } else if (event.data.type === 'loadProgram' && event.data.program) {
+    const loadScript = document.createElement('script');
+    loadScript.setAttribute('type', 'text/javascript');
+    loadScript.innerHTML = atob(event.data.program);
+    document.body.appendChild(loadScript);
   }
 });
 
@@ -253,11 +258,9 @@ function init() {
 
   // const uri = `runJS${query}`;
 
-  const loadScript = document.createElement('script');
-  loadScript.setAttribute('type', 'text/javascript');
-  // loadScript.setAttribute('src', uri);
-  loadScript.innerHTML = atob(params['code']);
-  document.body.appendChild(loadScript);
+  window.top.postMessage({
+    type: "sendProgram"
+  });
 }
 
 init();
