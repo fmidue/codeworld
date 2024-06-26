@@ -12,12 +12,12 @@ FILES_ORMOLU=$(git diff --cached --name-only --diff-filter=ACMR "*.hs" | \
 
 set -euo pipefail
 
-if [ -n "$FILES_PRETTIER" ]
-then
-  echo "Reprinting staged JS, CSS and HTML files with Prettier ..."
-  echo "$FILES_PRETTIER" | xargs npx prettier --write
-  echo "Reprinting complete."
-fi
+# if [ -n "$FILES_PRETTIER" ]
+# then
+#   echo "Reprinting staged JS, CSS and HTML files with Prettier ..."
+#   echo "$FILES_PRETTIER" | xargs npx prettier --write
+#   echo "Reprinting complete."
+# fi
 
 if [ -n "$FILES_ESLINT" ];
 then
