@@ -322,6 +322,45 @@ program = drawingOf(picture & coordinatePlane)
 picture = ...
 `);
   }
+
+  const currentUrl = new URL(window.location);
+  const searchParams = currentUrl.searchParams;
+  const codeSrc = searchParams.get("loadSrc");
+  if(codeSrc) {
+    const fetchController = new AbortController();
+    sweetAlert({
+      title: Alert.title('Loading code'),
+      text: 'The code is being fetched.  Please wait...',
+      onOpen: () => {
+        sweetAlert.showLoading();
+        sweetAlert.getCancelButton().disabled = false;
+      },
+      showConfirmButton: false,
+      showCancelButton: true,
+      showCloseButton: false,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      allowEnterKey: false,
+    }).then(() => {
+      fetchController.abort();
+    });
+    try {
+      const response = await fetch(codeSrc, {
+        signal: fetchController.signal,
+      });
+      const code = await response.text();
+      setCode(code);
+      sweetAlert.close();
+      searchParams.delete("loadSrc");
+      window.history.replaceState(window.history.state, "", currentUrl.toString());
+    } catch (error) {
+      sweetAlert(
+        'Oops!',
+        'Could not load the code from source. Please try again.',
+        'error'
+      );
+    }
+  }
 }
 
 function initCodeworld() {
