@@ -361,6 +361,8 @@ picture = ...
       );
     }
   }
+
+  if(window.preloadCode && window.buildMode === 'haskell')setCode(window.preloadCode);
 }
 
 function initCodeworld() {

@@ -36,6 +36,7 @@ Executable codeworld-server
     cryptonite,
     data-default,
     directory,
+    extra,
     fast-logger,
     filelock,
     filepath,
