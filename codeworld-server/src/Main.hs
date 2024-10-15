@@ -49,6 +49,7 @@ import Data.ByteString.Builder (toLazyByteString)
 import qualified Data.ByteString.Lazy as LB
 import Data.Char (isSpace)
 import Data.List
+import Data.List.Extra (replace)
 import Data.Maybe
 import Data.Monoid
 import Data.Text (Text)
@@ -168,7 +169,8 @@ site ctx =
           ("runJS", runHandler ctx),
           ("runBaseJS", runBaseHandler ctx),
           ("runMsg", runMessageHandler ctx),
-          ("haskell", serveFile "web/env.html"),
+          -- ("haskell", serveFile "web/env.html"),
+          ("haskell", serveEditor ctx),
           -- ("blocks", serveFile "web/blocks.html"),
           -- ("funblocks", serveFile "web/blocks.html"),
           ("indent", indentHandler ctx),
@@ -493,6 +495,14 @@ runMessageHandler = public $ \ctx -> do
   programId <- getHashParam False mode
   modifyResponse $ setContentType "text/plain"
   serveFile (buildRootDir mode </> resultFile programId)
+
+serveEditor :: CodeWorldHandler
+serveEditor = public $ \ctx -> do
+  msource <- getParam "source"
+  modifyResponse $ setContentType "text/html"
+  template <- liftIO $ readFile "web/env.html"
+  let content = replace "/*CODE_TO_BE_LOADED_BY_DEFAULT*/" (maybe "" (T.unpack . T.decodeUtf8) msource) template 
+  writeBS $ T.encodeUtf8 $ T.pack content
 
 indentHandler :: CodeWorldHandler
 indentHandler = public $ \ctx -> do
