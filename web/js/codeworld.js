@@ -314,11 +314,13 @@ async function init() {
       setCode('');
     }
   } else {
-    if(window.buildMode === "codeworld") setCode(`import Prelude hiding (rotated,translated,colored,lettering,scaled,polyline,Text,Number)
+    if(window.buildMode === "codeworld") setCode(`import Prelude hiding (rotated, translated, colored, lettering,
+                       scaled, polyline, Text, Number)
 
 program = drawingOf(picture & coordinatePlane)
 
-picture = ...`);
+picture = ...
+`);
   }
 }
 
