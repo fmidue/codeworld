@@ -38,7 +38,7 @@ const hintBlacklist = [
   'toInt',
 
   // Deprecated exports.
-  'path',
+  //'path',
   'thickPath',
   'text',
   'styledText',
