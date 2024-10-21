@@ -38,7 +38,7 @@ const hintBlacklist = [
   'toInt',
 
   // Deprecated exports.
-  'path',
+  //'path',
   'thickPath',
   'text',
   'styledText',
@@ -1485,6 +1485,7 @@ function printMessage(type, message) {
     }
   }
 
+  /*
   if (type === 'error' || type === 'warning') {
     if (!window.alreadyReportedErrors.has(scrubError(message))) {
       const $reportLink = $('<a>');
@@ -1509,10 +1510,11 @@ function printMessage(type, message) {
       }
     }
   }
+  */
 
   $outputBlock.scrollTop($outputBlock.prop('scrollHeight'));
 }
-
+/*
 function sendUnhelpfulReport(event, message, $reportLink) {
   if (window.alreadyReportedErrors.has(scrubError(message))) {
     sweetAlert({
@@ -1558,6 +1560,7 @@ function scrubError(msg) {
     .replace(/[a-zA-Z0-9_-]+\.hs:(\d+):((\d+)(-\d+)?)/g, '(loc)')
     .replace(/[a-zA-Z0-9_-]+\.hs:\((\d+),(\d+)\)-\((\d+),(\d+)\)/g, '(loc)');
 }
+*/
 
 function clearMessages() {
   const outputDiv = document.getElementById('message');
