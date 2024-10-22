@@ -234,3 +234,17 @@ This creates a 2 GB swap file to increase available virtual memory.  Installatio
 a swap file may be slow, but it will succeed.  (Unless you intend to write very large
 programs in CodeWorld, it's usually safe to remove the swap file after running the
 server for the first time.)
+
+### FMIDUE related changes ###
+
+- Auth related actions are turned off
+- Gallery is removed
+- Source codes from users are not being saved
+- Save code after compiling on client-side
+- Rename functions in custom `base` package
+- add template for codeworld mode
+- funblocks is turned off
+- Add options to load code via `fetch` and `POST`-Request
+- github feedback is turned off
+
+This is just a selection of noticeable changes. View the commit history to see all changes.
