@@ -241,10 +241,10 @@ server for the first time.)
 - Gallery is removed
 - Source codes from users are not being saved
 - Save code after compiling on client-side
-- Rename functions in custom `base` package
-- add template for codeworld mode
+- Rename functions in custom `base` package (see module [`Internal.FMIDUE`](codeworld-base/src/Internal/FMIDUE.hs))
+- Add template for non-Haskell mode (see in [`web/js/codeworld.js`](https://github.com/fmidue/codeworld/blob/86bdec2deb99798aa302494c50c0bd5cc53e0c71/web/js/codeworld.js#L317-L323))
 - funblocks is turned off
-- Add options to load code via `fetch` and `POST`-Request
+- Add options to load code via `fetch` and `POST`-Request (see [#17](https://github.com/fmidue/codeworld/pull/17))
 - github feedback is turned off
 
 This is just a selection of noticeable changes. View the commit history to see all changes.
