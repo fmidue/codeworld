@@ -251,6 +251,9 @@ async function init() {
     parseSymbolsFromCurrentCode();
   });
 
+  if(window.buildMode === 'codeworld')
+    document.querySelector("#docButton").style.display = "none";
+
   let hash = location.hash.slice(1);
   if (hash.length > 0) {
     if (hash.slice(-2) === '==') {
