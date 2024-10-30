@@ -27,6 +27,9 @@ rewriteStages =
     ("\8217", ""),
     ("warning: ([a-zA-Z,0-9 ]*)\\[-Wdefer[a-z-]*\\]", "error: \\1"),
     (" \\[-W[a-z-]*\\]", ""),
+    ("codeworld-base-[\\.0-9]*:([A-Za-z]*\\.)*([A-Za-z]*)", "\\2"),
+    ("Number", "Float"),
+    ("Text", "String"),
     ("IO action main", "variable program"),
     ("main IO action", "variable"),
     ("exported by", "defined in"),
@@ -41,8 +44,6 @@ rewriteStages =
     ),
     ("is applied to too few arguments", "is missing arguments"),
     ("is applied to too many arguments", "is a value, but a function is needed here."),
-    ( "Couldn't match expected type codeworld-base-[\\.0-9]*:([A-Za-z]*\\.)*([A-Za-z]*)",
-      "Couldn't match expected type \\2"),
     ( "Couldn't match expected type Text\\s*with actual type GHC.Types.Char",
       "Text requires double quotes, rather than single."
     ),
