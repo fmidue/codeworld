@@ -18,6 +18,16 @@ then
   REMOTE_DIR=${TARGET_FOLDER}${TIME}
 fi
 
+cp codeworld.tar codeworld-tmp.tar
+
+tar -rf codeworld-tmp.tar config/keter.yaml
+
+gzip codeworld-tmp.tar
+
+rm -f codeworld.keter
+mv codeworld-tmp.tar.gz codeworld.keter
+
+
 ssh ${JUMP_HOST:+-J} ${JUMP_HOST:+"${JUMP_HOST}"}\
   -p "${PORT}" "${SSH_USER}@${SERVER}" -C "mkdir -p ${REMOTE_DIR}"
 

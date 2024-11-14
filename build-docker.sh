@@ -23,25 +23,7 @@ docker buildx build --load --cache-from=type=local,src=${CACHE}/dist ${CACHE_TO}
 
 docker create --name codeworld codeworld:fmi
 
-docker cp codeworld:/opt/codeworld/codeworld.keter codeworld.keter
+docker cp codeworld:/opt/codeworld/codeworld.keter codeworld.tar
 
 docker rm codeworld
 
-TMPDIR=$(mktemp -d)
-ARCHIVEPATH="$(pwd)/codeworld.keter"
-
-# Create bundle
-
-cd $TMPDIR
-
-echo "Tempdir: $TMPDIR"
-
-tar xf "$ARCHIVEPATH"
-
-cd -
-
-rm -rf codeworld.keter
-
-tar czf codeworld.keter config/keter.yaml -C $TMPDIR .cabal/ .ghcjs/ base.sh run.sh build/ codeworld-base/ web/
-
-rm -rf $TMPDIR
