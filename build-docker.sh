@@ -2,7 +2,10 @@
 
 set -eux
 
-mkdir -p .cache/base/ .cache/dist/
+CACHE=.cache
+CACHE_TO=--cache-to=type=local,dest=${CACHE}/dist,mode=max
+
+mkdir -p ${CACHE}/base/ ${CACHE}/dist/
 
 # Create a new builder instance
 
@@ -14,7 +17,7 @@ docker buildx create --use --name=codeworld-builder --driver docker-container --
 
 echo "Building the dist image..."
 
-docker buildx build --load --cache-from=type=local,src=.cache/dist --cache-to=type=local,dest=.cache/dist,mode=max --tag codeworld:fmi --file Dockerfile.prod .
+docker buildx build --load --cache-from=type=local,src=${CACHE}/dist ${CACHE_TO} --tag codeworld:fmi --file Dockerfile.prod .
 
 # Copy keter file from image
 

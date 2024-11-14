@@ -1,14 +1,17 @@
 FROM ubuntu:20.04 as base
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get upgrade -y
+RUN <<INSTALL_DEPENDENCIES
+apt-get update && apt-get upgrade -y
 
-RUN apt-get install -y python3 build-essential curl libffi-dev libffi7 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 sudo pkg-config git wget bzip2 xz-utils psmisc zlib1g-dev  make gcc g++ gnupg patch autoconf automake libtinfo-dev libssl-dev ca-certificates
-RUN curl -sSf https://downloads.haskell.org/~ghcup/$(uname -m)-$(uname -s | awk '{print tolower($0)}')-ghcup > /usr/bin/ghcup && chmod +x /usr/bin/ghcup
+apt-get install -y python3 build-essential curl libffi-dev libffi7 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 sudo pkg-config git wget bzip2 xz-utils psmisc zlib1g-dev  make gcc g++ gnupg patch autoconf automake libtinfo-dev libssl-dev ca-certificates
+curl -sSf https://downloads.haskell.org/~ghcup/$(uname -m)-$(uname -s | awk '{print tolower($0)}')-ghcup > /usr/bin/ghcup && chmod +x /usr/bin/ghcup
 
-RUN useradd -ms /bin/bash -d /opt/codeworld codeworld
+useradd -ms /bin/bash -d /opt/codeworld codeworld
 
-RUN echo "codeworld ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
+echo "codeworld ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
+INSTALL_DEPENDENCIES
+
 ENV CODEWORLD_DIR /opt/codeworld
 
 WORKDIR $CODEWORLD_DIR
@@ -19,27 +22,29 @@ ENV CABAL_DIR $CODEWORLD_DIR/.cabal
 
 WORKDIR $CODEWORLD_DIR
 
-RUN ghcup upgrade
-RUN ghcup install 8.6.5
-RUN ghcup set 8.6.5
-RUN ghcup install-cabal 2.4.1.0
-
 ENV PATH $CODEWORLD_DIR/.ghcup/bin:$PATH
-
-RUN cabal update --index-state='2023-02-09T01:33:22Z'
-
-RUN cabal v2-install alex
-RUN cabal v2-install happy-1.19.9 --overwrite-policy=always
-
 ENV PATH $CODEWORLD_DIR/.cabal/bin:$PATH
+RUN <<PREPARE_INSTALLATION
+ghcup upgrade
+ghcup install 8.6.5
+ghcup set 8.6.5
+ghcup install-cabal 2.4.1.0
 
-RUN sudo mkdir -p /etc/apt/keyrings
 
-RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+cabal update --index-state='2023-02-09T01:33:22Z'
 
-RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+cabal v2-install alex
+cabal v2-install happy-1.19.9 --overwrite-policy=always
 
-RUN sudo apt-get update && sudo apt-get install nodejs -y
+
+sudo mkdir -p /etc/apt/keyrings
+
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+
+sudo apt-get update && sudo apt-get install nodejs -y
+PREPARE_INSTALLATION
 
 FROM base as builder
 
@@ -55,17 +60,19 @@ COPY --chown=codeworld ghc-artifacts/ ghc-artifacts/
 
 WORKDIR $CODEWORLD_DIR/build/ghcjs
 
-RUN git submodule update --init
-RUN patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-default-main.patch
-RUN patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-dedup-fix.patch
+RUN <<GHC_JS_PREPARE
+git submodule update --init
+patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-default-main.patch
+patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-dedup-fix.patch
 
-RUN ./utils/boot || true
+./utils/boot || true
 
-RUN cabal v2-install . --symlink-bindir=$CODEWORLD_DIR/build/bin -j1 --disable-documentation --overwrite-policy=always
+cabal v2-install . --symlink-bindir=$CODEWORLD_DIR/build/bin -j1 --disable-documentation --overwrite-policy=always
 
-RUN ls $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/ | grep ghcjs-8.6.0.1 | xargs -i sudo cp --remove-destination $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/{}/libexec/ghcjs-boot $CODEWORLD_DIR/build/bin/ghcjs-boot
-RUN ls $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/ | grep ghcjs-8.6.0.1 | xargs -i sudo cp --remove-destination $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/{}/libexec/ghcjs-run $CODEWORLD_DIR/build/bin/ghcjs-run
-RUN ls $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/ | grep ghcjs-8.6.0.1 | xargs -i sudo cp --remove-destination $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/{}/libexec/ghcjs-dumparchive $CODEWORLD_DIR/build/bin/ghcjs-dumparchive
+ls $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/ | grep ghcjs-8.6.0.1 | xargs -i sudo cp --remove-destination $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/{}/libexec/ghcjs-boot $CODEWORLD_DIR/build/bin/ghcjs-boot
+ls $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/ | grep ghcjs-8.6.0.1 | xargs -i sudo cp --remove-destination $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/{}/libexec/ghcjs-run $CODEWORLD_DIR/build/bin/ghcjs-run
+ls $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/ | grep ghcjs-8.6.0.1 | xargs -i sudo cp --remove-destination $CODEWORLD_DIR/.cabal/store/ghc-8.6.5/{}/libexec/ghcjs-dumparchive $CODEWORLD_DIR/build/bin/ghcjs-dumparchive
+GHC_JS_PREPARE
 
 
 WORKDIR $CODEWORLD_DIR/build/ghcjs
@@ -84,11 +91,13 @@ RUN git clone https://github.com/codemirror/CodeMirror.git
 
 WORKDIR $CODEWORLD_DIR/build/CodeMirror
 
-RUN git checkout dde0e5cb51b243c61de9c43405b60c69a86dfb24
+RUN <<CODE_MIRROR_PREPARE
+git checkout dde0e5cb51b243c61de9c43405b60c69a86dfb24
 
-RUN npm install
+npm install
 
-RUN npm install -s uglify-js https://github.com/angelozerr/CodeMirror-Extension
+npm install -s uglify-js https://github.com/angelozerr/CodeMirror-Extension
+CODE_MIRROR_PREPARE
 
 ###############################################
 ### Install third party modules             ###
@@ -98,9 +107,11 @@ WORKDIR $CODEWORLD_DIR
 
 COPY --chown=codeworld third_party/ third_party/
 
-RUN git init
-RUN git submodule init
-RUN git submodule update
+RUN <<FETCH_SUBMODULES
+git init
+git submodule init
+git submodule update
+FETCH_SUBMODULES
 
 ###############################################
 ### Build codeworld                         ###
@@ -118,34 +129,38 @@ COPY --chown=codeworld codeworld-base/ codeworld-base/
 COPY --chown=codeworld codeworld-game-api/ codeworld-game-api/ 
 COPY --chown=codeworld codeworld-available-pkgs/ codeworld-available-pkgs/
 
-RUN bash -c "source base.sh && cabal_install --ghcjs ./codeworld-prediction ./codeworld-error-sanitizer ./codeworld-api ./codeworld-base ./codeworld-game-api ./codeworld-available-pkgs"
+RUN <<BUILD_CODEWORLD_MIRROR
+bash -c "source base.sh && cabal_install --ghcjs ./codeworld-prediction ./codeworld-error-sanitizer ./codeworld-api ./codeworld-base ./codeworld-game-api ./codeworld-available-pkgs"
 
-RUN ghcjs-pkg hide base-compat
-RUN ghcjs-pkg hide ghcjs-dom-jsffi
-RUN ghcjs-pkg hide matrices
-RUN ghcjs-pkg hide simple-affine-space
-RUN ghcjs-pkg hide newtype
-RUN ghcjs-pkg hide non-empty
-RUN ghcjs-pkg hide hgeometry-combinatorial
-RUN ghcjs-pkg hide Cabal
-RUN ghcjs-pkg hide cabal-doctest
-RUN ghcjs-pkg hide some
+ghcjs-pkg hide base-compat
+ghcjs-pkg hide ghcjs-dom-jsffi
+ghcjs-pkg hide matrices
+ghcjs-pkg hide simple-affine-space
+ghcjs-pkg hide newtype
+ghcjs-pkg hide non-empty
+ghcjs-pkg hide hgeometry-combinatorial
+ghcjs-pkg hide Cabal
+ghcjs-pkg hide cabal-doctest
+ghcjs-pkg hide some
 
-RUN node $CODEWORLD_DIR/build/bin/find-dup-modules.jsexe/all.js $CODEWORLD_DIR/.ghcjs/x86_64-linux-8.6.0.1-8.6.5/ghcjs/package.conf.d/package.cache
+node $CODEWORLD_DIR/build/bin/find-dup-modules.jsexe/all.js $CODEWORLD_DIR/.ghcjs/x86_64-linux-8.6.0.1-8.6.5/ghcjs/package.conf.d/package.cache
+BUILD_CODEWORLD_MIRROR
 
 WORKDIR $CODEWORLD_DIR/codeworld-base
 
-RUN cabal configure --ghcjs
-RUN cabal haddock --html
-RUN cabal haddock --hoogle
-
-
+RUN <<BUILD_CODEWORLD_BASE
+cabal configure --ghcjs
+cabal haddock --html
+cabal haddock --hoogle
+BUILD_CODEWORLD_BASE
 
 WORKDIR $CODEWORLD_DIR/codeworld-api
 
-RUN cabal configure --ghcjs
-RUN cabal haddock --html
-RUN cabal haddock --hoogle
+RUN <<BUILD_CODEWORLD_API
+cabal configure --ghcjs
+cabal haddock --html
+cabal haddock --hoogle
+BUILD_CODEWORLD_API
 
 WORKDIR $CODEWORLD_DIR
 
@@ -170,8 +185,10 @@ WORKDIR $CODEWORLD_DIR
 COPY --chown=codeworld web/ web/
 COPY --chown=codeworld run.sh fix-web.sh ./
 
-RUN ./fix-web.sh
+RUN <<KETER
+./fix-web.sh
 
-RUN tar -cf codeworld.keter .cabal/store/ghc-8.6.5/ .ghcjs/ base.sh build/bin/codeworld-server build/bin/ghcjs build/lib/x86_64-linux-ghcjs-8.6.0.1-ghc8_6_5 codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt run.sh web/
+tar -cf codeworld.keter .cabal/store/ghc-8.6.5/ .ghcjs/ base.sh build/bin/codeworld-server build/bin/ghcjs build/lib/x86_64-linux-ghcjs-8.6.0.1-ghc8_6_5 codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt run.sh web/
+KETER
 
 CMD ./run.sh
