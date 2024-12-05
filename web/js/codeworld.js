@@ -365,7 +365,10 @@ picture = ...
     }
   }
 
-  if(window.preloadCode && window.buildMode === 'haskell')setCode(window.preloadCode);
+  if(window.preloadCode && window.buildMode === 'haskell'){
+    const codeToLoad = new DOMParser().parseFromString(window.preloadCode, 'text/html').documentElement.textContent;
+    setCode(codeToLoad);
+  };
 }
 
 function initCodeworld() {
