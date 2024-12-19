@@ -40,6 +40,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import Data.Either (fromRight)
 import Data.Function
 import Data.List
 import qualified Data.Map as Map
@@ -49,6 +50,7 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Yaml (FromJSON(..), withObject, (.:), decodeFileEither)
 import ErrorSanitizer
 import Language.Haskell.Exts.SrcLoc
 import System.Directory
@@ -189,10 +191,15 @@ prepareCompile dir = do
       liftIO $ copyFile syms (dir </> "out.base.symbs")
       return ["-dedupe", "-use-base", "out.base.symbs"]
   mainMod <- getMainModuleName
-  return $ localSrcs ++ buildArgs mainMod mode ++ extraPkgArgs ++ linkArgs
+  parseResult <- liftIO $ decodeFileEither "extensions.yaml"
+  let ExtraExtensions extraCW extraH = fromRight (ExtraExtensions [] []) parseResult
+      extraExts
+        | mode == "codeworld" = extraCW
+        | otherwise = extraH
+  return $ localSrcs ++ buildArgs mainMod mode extraExts ++ extraPkgArgs ++ linkArgs
 
-buildArgs :: String -> SourceMode -> [String]
-buildArgs mainMod "codeworld" =
+buildArgs :: String -> SourceMode -> [String] -> [String]
+buildArgs mainMod "codeworld" extraExts =
   [ "-DGHCJS_BROWSER",
     "-ferror-spans",
     "-fno-diagnostics-show-caret",
@@ -239,16 +246,18 @@ buildArgs mainMod "codeworld" =
     "-XScopedTypeVariables",
     "-XTypeOperators",
     "-XViewPatterns",
-    "-XImplicitPrelude", -- MUST come after RebindableSyntax.
-    "-O",
+    "-XImplicitPrelude" -- MUST come after RebindableSyntax.
+  ] ++ map ("-X" ++) extraExts ++
+  [ "-O",
     "-main-is",
     mainMod ++ ".program"
   ]
-buildArgs mainMod "haskell" =
+buildArgs mainMod "haskell" extraExts =
   [ "-DGHCJS_BROWSER",
     "-ferror-spans",
-    "-fno-diagnostics-show-caret",
-    "-O",
+    "-fno-diagnostics-show-caret"
+  ] ++ map ("-X" ++) extraExts ++
+  [ "-O",
     "-main-is",
     mainMod ++ ".main"
   ]
@@ -373,3 +382,10 @@ copyOutputFrom target =
       createDirectoryIfMissing True (takeDirectory out)
       writeUtf8 out (rtsCode <> libCode <> outCode)
     ErrorCheck -> return ()
+
+data ExtraExtensions = ExtraExtensions [String] [String]
+
+instance FromJSON ExtraExtensions where
+  parseJSON = withObject "ExtraExtensions" $ \v -> ExtraExtensions
+    <$> v .: "codeworld"
+    <*> v .: "haskell"
