@@ -1970,9 +1970,6 @@ function run(hash, dhash, msg, error, generation) {
   if (hash) {
     window.location.hash = `#${hash}`;
     // document.getElementById('shareButton').style.display = '';
-  } else {
-    window.location.hash = '';
-    // document.getElementById('shareButton').style.display = 'none';
   }
 
   if (dhash) {
