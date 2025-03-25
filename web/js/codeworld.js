@@ -388,7 +388,7 @@ function initCodeworld() {
     lineNumbers: true,
     autofocus: true,
     matchBrackets: true,
-    styleActiveLine: !WURFL || !WURFL.is_mobile,
+    styleActiveLine: true,
     showTrailingSpace: true,
     indentWithTabs: false,
     indentUnit: 2,
