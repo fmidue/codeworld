@@ -1,10 +1,10 @@
-FROM ubuntu:20.04 as base
+FROM ubuntu:24.04 as base
 ARG DEBIAN_FRONTEND=noninteractive
-
 RUN <<INSTALL_DEPENDENCIES
+set -e
 apt-get update && apt-get upgrade -y
 
-apt-get install -y python3 build-essential curl libffi-dev libffi7 libgmp-dev libgmp10 libncurses-dev libncurses5 libtinfo5 sudo pkg-config git wget bzip2 xz-utils psmisc zlib1g-dev  make gcc g++ gnupg patch autoconf automake libtinfo-dev libssl-dev ca-certificates
+apt-get install -y python3 build-essential curl libffi-dev libffi8 libgmp-dev libgmp10 libncurses-dev libncursesw6 libtinfo6 sudo pkg-config git wget bzip2 xz-utils psmisc zlib1g-dev make gcc g++ gnupg patch autoconf automake libtinfo-dev libssl-dev ca-certificates
 curl -sSf https://downloads.haskell.org/~ghcup/$(uname -m)-$(uname -s | awk '{print tolower($0)}')-ghcup > /usr/bin/ghcup && chmod +x /usr/bin/ghcup
 
 useradd -ms /bin/bash -d /opt/codeworld codeworld
@@ -25,6 +25,7 @@ WORKDIR $CODEWORLD_DIR
 ENV PATH $CODEWORLD_DIR/.ghcup/bin:$PATH
 ENV PATH $CODEWORLD_DIR/.cabal/bin:$PATH
 RUN <<PREPARE_INSTALLATION
+set -e
 ghcup upgrade
 ghcup install 8.6.5
 ghcup set 8.6.5
@@ -61,6 +62,7 @@ COPY --chown=codeworld ghc-artifacts/ ghc-artifacts/
 WORKDIR $CODEWORLD_DIR/build/ghcjs
 
 RUN <<GHC_JS_PREPARE
+set -e
 git submodule update --init
 patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-default-main.patch
 patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-dedup-fix.patch
@@ -92,6 +94,7 @@ RUN git clone https://github.com/codemirror/CodeMirror.git
 WORKDIR $CODEWORLD_DIR/build/CodeMirror
 
 RUN <<CODE_MIRROR_PREPARE
+set -e
 git checkout dde0e5cb51b243c61de9c43405b60c69a86dfb24
 
 npm install
@@ -108,6 +111,7 @@ WORKDIR $CODEWORLD_DIR
 COPY --chown=codeworld third_party/ third_party/
 
 RUN <<FETCH_SUBMODULES
+set -e
 git init
 git submodule init
 git submodule update
@@ -130,6 +134,7 @@ COPY --chown=codeworld codeworld-game-api/ codeworld-game-api/
 COPY --chown=codeworld codeworld-available-pkgs/ codeworld-available-pkgs/
 
 RUN <<BUILD_CODEWORLD_MIRROR
+set -e
 bash -c "source base.sh && cabal_install --ghcjs ./codeworld-prediction ./codeworld-error-sanitizer ./codeworld-api ./codeworld-base ./codeworld-game-api ./codeworld-available-pkgs"
 
 ghcjs-pkg hide base-compat
@@ -149,6 +154,7 @@ BUILD_CODEWORLD_MIRROR
 WORKDIR $CODEWORLD_DIR/codeworld-base
 
 RUN <<BUILD_CODEWORLD_BASE
+set -e
 cabal configure --ghcjs
 cabal haddock --html
 cabal haddock --hoogle
@@ -157,6 +163,7 @@ BUILD_CODEWORLD_BASE
 WORKDIR $CODEWORLD_DIR/codeworld-api
 
 RUN <<BUILD_CODEWORLD_API
+set -e
 cabal configure --ghcjs
 cabal haddock --html
 cabal haddock --hoogle
@@ -186,6 +193,7 @@ COPY --chown=codeworld web/ web/
 COPY --chown=codeworld run.sh fix-web.sh ./
 
 RUN <<KETER
+set -e
 ./fix-web.sh
 
 tar -cf codeworld.keter .cabal/store/ghc-8.6.5/ .ghcjs/ base.sh build/bin/codeworld-server build/bin/ghcjs build/lib/x86_64-linux-ghcjs-8.6.0.1-ghc8_6_5 codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt run.sh web/
