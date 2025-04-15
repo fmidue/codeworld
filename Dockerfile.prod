@@ -66,6 +66,7 @@ set -e
 git submodule update --init
 patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-default-main.patch
 patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-dedup-fix.patch
+patch -p0 -u -d $CODEWORLD_DIR/build < $CODEWORLD_DIR/ghc-artifacts/ghcjs-8.6-boot-fix.patch
 
 ./utils/boot || true
 
