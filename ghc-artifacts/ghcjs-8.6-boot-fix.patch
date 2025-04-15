@@ -1,0 +1,24 @@
+--- ghcjs/ghc/boot
++++ b/boot
+@@ -144,6 +144,13 @@ def boot_pkgs():
+                     ))
+ 
+ 
++def autoheader():
++    process = subprocess.Popen(['sh','-c', 'autoheader'])
++    code = process.wait()
++    if code != 0:
++        print_err('autoheader failed')
++        sys.exit(1)
++
+ def autoreconf():
+     # Run autoreconf on everything that needs it.
+     processes = {}
+@@ -193,6 +200,7 @@ def check_build_mk():
+ check_for_url_rewrites()
+ if not args.hadrian:
+     boot_pkgs()
++autoheader()
+ autoreconf()
+ if not args.hadrian:
+     check_build_mk()
