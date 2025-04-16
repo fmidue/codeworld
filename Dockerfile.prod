@@ -1,4 +1,4 @@
-FROM ubuntu:24.04 as base
+FROM ubuntu:24.04 AS base
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<INSTALL_DEPENDENCIES
 set -e
@@ -12,18 +12,18 @@ useradd -ms /bin/bash -d /opt/codeworld codeworld
 echo "codeworld ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
 INSTALL_DEPENDENCIES
 
-ENV CODEWORLD_DIR /opt/codeworld
+ENV CODEWORLD_DIR=/opt/codeworld
 
 WORKDIR $CODEWORLD_DIR
 RUN chown codeworld:codeworld .
 USER codeworld
 
-ENV CABAL_DIR $CODEWORLD_DIR/.cabal
+ENV CABAL_DIR=$CODEWORLD_DIR/.cabal
 
 WORKDIR $CODEWORLD_DIR
 
-ENV PATH $CODEWORLD_DIR/.ghcup/bin:$PATH
-ENV PATH $CODEWORLD_DIR/.cabal/bin:$PATH
+ENV PATH=$CODEWORLD_DIR/.ghcup/bin:$PATH
+ENV PATH=$CODEWORLD_DIR/.cabal/bin:$PATH
 RUN <<PREPARE_INSTALLATION
 set -e
 ghcup upgrade
@@ -47,7 +47,7 @@ echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.co
 sudo apt-get update && sudo apt-get install nodejs -y
 PREPARE_INSTALLATION
 
-FROM base as builder
+FROM base AS builder
 
 WORKDIR $CODEWORLD_DIR
 
@@ -80,7 +80,7 @@ GHC_JS_PREPARE
 
 WORKDIR $CODEWORLD_DIR/build/ghcjs
 
-ENV PATH $CODEWORLD_DIR/build/bin:$PATH
+ENV PATH=$CODEWORLD_DIR/build/bin:$PATH
 
 RUN ghcjs-boot -j1 --no-prof --no-haddock -s lib/boot/ 
 
@@ -200,4 +200,4 @@ set -e
 tar -cf codeworld.keter .cabal/store/ghc-8.6.5/ .ghcjs/ base.sh build/bin/codeworld-server build/bin/ghcjs build/lib/x86_64-linux-ghcjs-8.6.0.1-ghc8_6_5 codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt run.sh web/
 KETER
 
-CMD ./run.sh
+ENTRYPOINT [ "./run.sh" ]
