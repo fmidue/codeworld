@@ -556,13 +556,13 @@ function initCodeworld() {
         title: 'Run',
         callback: (cm) => compile(),
       },
-      {
+      window.location.pathname === '/haskell' ? undefined : {
         class: 'cw-toolbar-button mdi mdi-auto-fix',
         label: '',
         title: 'Autocomplete',
         callback: (cm) => cm.execCommand('autocomplete'),
       },
-    ],
+    ].filter(x => !!x),
   });
   CodeMirror.commands.indentMore = (cm) => changeIndent('add');
   CodeMirror.commands.indentLess = (cm) => changeIndent('subtract');
