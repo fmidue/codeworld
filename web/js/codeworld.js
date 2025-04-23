@@ -366,7 +366,7 @@ picture = ...
   }
 
   if(window.preloadCode && window.buildMode === 'haskell'){
-    const codeToLoad = new DOMParser().parseFromString(String.raw`${window.preloadCode}`, 'text/html').documentElement.textContent;
+    const codeToLoad = new DOMParser().parseFromString(window.preloadCode, 'text/html').documentElement.textContent;
     setCode(codeToLoad);
   };
 }
