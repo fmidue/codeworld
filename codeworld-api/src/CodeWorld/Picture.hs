@@ -266,8 +266,12 @@ circle :: HasCallStack => Double -> Picture
 circle = Circle (getDebugSrcLoc callStack)
 
 -- | A thick circle, with this line width and radius
+--
+-- The line width must not be greater than the diameter.
 thickCircle :: HasCallStack => Double -> Double -> Picture
-thickCircle = ThickCircle (getDebugSrcLoc callStack)
+thickCircle a r 
+  | a <= 2 * r = ThickCircle (getDebugSrcLoc callStack) a r
+  | otherwise = error "The line width must not be greater than the diameter."
 
 -- | A thin arc, starting and ending at these angles, with this radius
 --
