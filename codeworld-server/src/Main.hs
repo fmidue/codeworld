@@ -501,7 +501,8 @@ serveEditor = public $ \ctx -> do
   msource <- getParam "source"
   modifyResponse $ setContentType "text/html"
   template <- liftIO $ readFile "web/env.html"
-  let content = replace "/*CODE_TO_BE_LOADED_BY_DEFAULT*/" (maybe "" (T.unpack . T.decodeUtf8) msource) template 
+  let code = maybe "" (T.unpack . T.decodeUtf8) msource
+  let content = replace "/*CODE_TO_BE_LOADED_BY_DEFAULT*/" (replace "`" "\\`" code) template 
   writeBS $ T.encodeUtf8 $ T.pack content
 
 indentHandler :: CodeWorldHandler
