@@ -1,9 +1,12 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
+#if __GLASGOW_HASKELL__ < 908
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE JavaScriptFFI #-}
+#endif
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wwarn=unused-imports #-}
 
 {-
   Copyright 2020 The CodeWorld Authors. All rights reserved.
@@ -20,6 +23,7 @@
 
 module CodeWorld.CanvasM where
 
+import Control.Monad (ap)
 import Control.Monad.Reader
 import Data.Text (Text)
 

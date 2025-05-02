@@ -3,10 +3,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+#if __GLASGOW_HASKELL__ < 908
 {-# LANGUAGE ForeignFunctionInterface #-}
+#endif
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+#if __GLASGOW_HASKELL__ < 908
 {-# LANGUAGE JavaScriptFFI #-}
+#endif
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}

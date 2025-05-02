@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -206,9 +207,11 @@ tickGame state =
   modifyMVar_ (totalStats state) $ \ts ->
     return $! ts {totalGames = totalGames ts + 1}
 
+#if __GLASGOW_HASKELL__ < 900
 deriving instance Generic RTSStats
 
 deriving instance Generic GCDetails
+#endif
 
 instance ToJSON RTSStats
 

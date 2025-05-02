@@ -1,4 +1,7 @@
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ < 908
 {-# LANGUAGE JavaScriptFFI #-}
+#endif
 
 {-
   Copyright 2020 The CodeWorld Authors. All Rights Reserved.
