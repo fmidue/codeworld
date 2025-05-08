@@ -497,8 +497,13 @@ runMessageHandler = public $ \ctx -> do
   serveFile (buildRootDir mode </> resultFile programId)
 
 escapeCode :: String -> String
-escapeCode input = foldr (\r acc -> replace r ('\\':r) acc) input toBeEscaped
-  where toBeEscaped = ["${","`","\\"]
+escapeCode input = foldr
+  (\r -> replace r ('\\':r))
+  (escapeBackslashes input)
+  toBeEscaped
+  where 
+    escapeBackslashes = replace "\\" "\\\\"
+    toBeEscaped = ["${","`"]
 
 serveEditor :: CodeWorldHandler
 serveEditor = public $ \ctx -> do
