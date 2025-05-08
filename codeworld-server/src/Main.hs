@@ -496,13 +496,22 @@ runMessageHandler = public $ \ctx -> do
   modifyResponse $ setContentType "text/plain"
   serveFile (buildRootDir mode </> resultFile programId)
 
+escapeCode :: String -> String
+escapeCode input = foldr
+  (\r -> replace r ('\\':r))
+  (escapeBackslashes input)
+  toBeEscaped
+  where 
+    escapeBackslashes = replace "\\" "\\\\"
+    toBeEscaped = ["${","`"]
+
 serveEditor :: CodeWorldHandler
 serveEditor = public $ \ctx -> do
   msource <- getParam "source"
   modifyResponse $ setContentType "text/html"
   template <- liftIO $ readFile "web/env.html"
   let code = maybe "" (T.unpack . T.decodeUtf8) msource
-  let content = replace "/*CODE_TO_BE_LOADED_BY_DEFAULT*/" (replace "`" "\\`" code) template 
+  let content = replace "/*CODE_TO_BE_LOADED_BY_DEFAULT*/" (escapeCode code) template 
   writeBS $ T.encodeUtf8 $ T.pack content
 
 indentHandler :: CodeWorldHandler
