@@ -450,14 +450,14 @@ imageContains _ _ imgw imgh ds p = withDS ds $ do
   CM.isPointInPath p
 
 coordinatePlanePic :: Picture
-coordinatePlanePic = axes <> numbers <> guidelines
+coordinatePlanePic = axes & numbers & guidelines
   where
     xline y = colored (RGBA 0 0 0 0.25) $ polyline [(-10, y), (10, y)]
     xaxis = colored (RGBA 0 0 0 0.75) $ polyline [(-10, 0), (10, 0)]
-    axes = xaxis <> rotated (pi / 2) xaxis
+    axes = xaxis & rotated (pi / 2) xaxis
     xguidelines = pictures [xline k | k <- [-10, -9 .. 10]]
-    guidelines = xguidelines <> rotated (pi / 2) xguidelines
-    numbers = xnumbers <> ynumbers
+    guidelines = xguidelines & rotated (pi / 2) xguidelines
+    numbers = xnumbers & ynumbers
     xnumbers =
       pictures
         [ translated
@@ -1451,7 +1451,7 @@ drawPartialPic canvas nodeId pic = do
     setCanvasSize canvas canvas
     let node = fromMaybe blank (getNode nodeId pic)
     frameRenderer <- createFrameRenderer canvas
-    frameRenderer (node <> coordinatePlane)
+    frameRenderer (node & coordinatePlane)
 
 applySelectAndHighlights :: Maybe NodeId -> [NodeId] -> Picture -> Picture
 applySelectAndHighlights sel hs p = applyHighlights hs' p'
@@ -1465,7 +1465,7 @@ applySelect (Just (NodeId n)) (pic, highlights) =
         Just pic' -> (pic', [ NodeId (h - n) | NodeId h <- highlights ])
 
 applyHighlights :: [NodeId] -> Picture -> Picture
-applyHighlights hs p = pictures [highlight h p | h <- hs] <> p
+applyHighlights hs p = pictures [highlight h p | h <- hs] & p
 
 highlight :: NodeId -> Picture -> Picture
 highlight n pic = case getTransformedNode n pic of
