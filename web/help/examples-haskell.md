@@ -95,7 +95,7 @@ update (TimePassing dt) state@Replay{..}
 update _ state = state
 
 circlesAndArrows :: [Vector] -> Picture
-circlesAndArrows vectors = greyed 0.1 circles <> greyed 0.3 arrows
+circlesAndArrows vectors = greyed 0.1 circles & greyed 0.3 arrows
  where
   centers = scanl vectorSum (0,0) vectors
   mkCircle (x,y) vec = translated x y (circle (vectorLength vec))
@@ -106,10 +106,10 @@ circlesAndArrows vectors = greyed 0.1 circles <> greyed 0.3 arrows
 instructions :: Int -> Picture
 instructions numVectors =
   lettering ("j/k: decrease / increase number of vectors (" <> T.pack (show numVectors) <> ")")
-  <> translated 0 (-1) (lettering "f: follow / unfollow the cursor")
-  <> translated 0 (-2) (lettering "up/down: zoom in / zoom out")
-  <> translated 0 (-3) (lettering "left/right: slow down / speed up")
-  <> translated 0 (-4) (lettering "r: restart")
+  & translated 0 (-1) (lettering "f: follow / unfollow the cursor")
+  & translated 0 (-2) (lettering "up/down: zoom in / zoom out")
+  & translated 0 (-3) (lettering "left/right: slow down / speed up")
+  & translated 0 (-4) (lettering "r: restart")
 
 render :: State -> Picture
 render InitialState = lettering "draw a closed shape without lifting the pencil"
@@ -117,9 +117,9 @@ render (UserDrawing points) = polyline points
 render Replay{..} =
   transform
     (colored blue (thickPolyline thickness points)
-     <> colored (lighter 0.3 brown) (polyline originalPath)
-     <> circlesAndArrows (take numVectors (rotatedVectors vectors (floorToTick time))))
-  <> translated (-7) 9.5 (scaled 0.3 0.3 (instructions numVectors))
+     & colored (lighter 0.3 brown) (polyline originalPath)
+     & circlesAndArrows (take numVectors (rotatedVectors vectors (floorToTick time))))
+  & translated (-7) 9.5 (scaled 0.3 0.3 (instructions numVectors))
  where
   transform
     | Fixed <- camera = id

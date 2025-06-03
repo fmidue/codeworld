@@ -59,7 +59,6 @@ module CodeWorld
     reflected,
     clipped,
     pictures,
-    (<>),
     (&),
     coordinatePlane,
     codeWorldLogo,
@@ -119,7 +118,6 @@ module CodeWorld
   )
 where
 
-import Prelude ((<>))
 import CodeWorld.Color
 import CodeWorld.EntryPoints
 import CodeWorld.Event
