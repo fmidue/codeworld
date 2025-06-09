@@ -25,8 +25,6 @@ cp -r codeworld-api/dist/doc/html/codeworld-api web/doc-haskell
 
 cp web/env.html web/index.html
 
-cp -r third_party/blockly web/blockly
-
 cp build/CodeMirror/theme/ambiance.css web/css/ambiance.css
 
 cp build/CodeMirror/lib/codemirror.css web/css/codemirror.css
