@@ -412,6 +412,7 @@ function initCodeworld() {
       'Ctrl-Enter': compile,
       'Ctrl-Up': changeFontSize(1),
       'Ctrl-Down': changeFontSize(-1),
+      'Ctrl-I': formatSource,
       Backspace: backspace,
     },
     textHover: window.buildMode === 'codeworld' ? onHover : null,
@@ -574,18 +575,6 @@ function initCodeworld() {
 
   CodeMirror.commands.save = (cm) => {
     saveProject();
-  };
-  document.onkeydown = (e) => {
-    if (e.ctrlKey && e.keyCode === 83) {
-      // Ctrl+S
-      saveProject();
-      return false;
-    }
-    if (e.ctrlKey && e.keyCode === 73) {
-      // Ctrl+I
-      formatSource();
-      return false;
-    }
   };
 
   window.reparseTimeoutId = null;
