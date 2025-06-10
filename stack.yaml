@@ -11,7 +11,6 @@ packages:
   - codeworld-prediction
   # - codeworld-server
   - codeworld-base
-  - funblocks-client
 
 allow-newer: true
 allow-newer-deps:
