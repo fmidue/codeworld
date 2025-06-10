@@ -21,7 +21,6 @@ Editor Shortcuts
     | Ctrl + Shift + G               | Find previous occurrence     |
     | Ctrl + Shift + F               | Replace                      |
     | Ctrl + Shift + R               | Replace all                  |
-    | Ctrl + S                       | Save                         |
     | Ctrl + Z                       | Undo                         |
     | Ctrl + Shift + Z, or Ctrl + Y  | Redo                         |
     | Ctrl + U                       | Undo selection               |
