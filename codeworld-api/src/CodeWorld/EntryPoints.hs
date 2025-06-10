@@ -314,7 +314,7 @@ handleControl _ _ _ w = (w, False)
 
 wrappedDraw ::
   (Wrapped a -> [Control a]) -> (a -> Picture) -> Wrapped a -> Picture
-wrappedDraw ctrls f w = drawControlPanel ctrls w <> dilated k (translated dx dy (f (state w)))
+wrappedDraw ctrls f w = drawControlPanel ctrls w & dilated k (translated dx dy (f (state w)))
   where
     SP dx dy = panCenter w
     k = zoomFactor w
@@ -336,48 +336,48 @@ drawControl _ alpha (RestartButton (x, y)) = translated x y p
       colored
         (RGBA 0 0 0 alpha)
         ( thickArc 0.1 (pi / 6) (11 * pi / 6) 0.2
-            <> translated 0.173 (-0.1) (solidRectangle 0.17 0.17)
+            & translated 0.173 (-0.1) (solidRectangle 0.17 0.17)
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (StartOverButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         ( thickArc 0.1 (pi / 6) (11 * pi / 6) 0.2
-            <> translated 0.173 (-0.1) (solidRectangle 0.17 0.17)
+            & translated 0.173 (-0.1) (solidRectangle 0.17 0.17)
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (PlayButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         (solidPolygon [(-0.2, 0.25), (-0.2, -0.25), (0.2, 0)])
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (PauseButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         ( translated (-0.15) 0 (solidRectangle 0.2 0.6)
-            <> translated 0.15 0 (solidRectangle 0.2 0.6)
+            & translated 0.15 0 (solidRectangle 0.2 0.6)
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (FastForwardButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         ( solidPolygon [(-0.3, 0.25), (-0.3, -0.25), (-0.05, 0)]
-            <> solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
+            & solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (ZoomInButton (x, y)) = translated x y p
   where
     p =
@@ -387,13 +387,13 @@ drawControl _ alpha (ZoomInButton (x, y)) = translated x y p
             (-0.05)
             (0.05)
             ( thickCircle 0.1 0.22
-                <> solidRectangle 0.06 0.25
-                <> solidRectangle 0.25 0.06
-                <> rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
+                & solidRectangle 0.06 0.25
+                & solidRectangle 0.25 0.06
+                & rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
             )
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (ZoomOutButton (x, y)) = translated x y p
   where
     p =
@@ -403,69 +403,69 @@ drawControl _ alpha (ZoomOutButton (x, y)) = translated x y p
             (-0.05)
             (0.05)
             ( thickCircle 0.1 0.22
-                <> solidRectangle 0.25 0.06
-                <> rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
+                & solidRectangle 0.25 0.06
+                & rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
             )
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ _ PanningLayer = blank
 drawControl _ alpha (ResetViewButton (x, y)) = translated x y p
   where
     p =
       colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.7 0.2)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.2 0.7)
-        <> colored (RGBA 0.0 0.0 0.0 alpha) (thickRectangle 0.1 0.5 0.5)
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.2 0.7)
+        & colored (RGBA 0.0 0.0 0.0 alpha) (thickRectangle 0.1 0.5 0.5)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (BackButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         ( translated 0.15 0 (solidRectangle 0.2 0.5)
-            <> solidPolygon [(-0.05, 0.25), (-0.05, -0.25), (-0.3, 0)]
+            & solidPolygon [(-0.05, 0.25), (-0.05, -0.25), (-0.3, 0)]
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (UndoButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         ( translated 0.15 0 (solidRectangle 0.2 0.5)
-            <> solidPolygon [(-0.05, 0.25), (-0.05, -0.25), (-0.3, 0)]
+            & solidPolygon [(-0.05, 0.25), (-0.05, -0.25), (-0.3, 0)]
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (StepButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         ( translated (-0.15) 0 (solidRectangle 0.2 0.5)
-            <> solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
+            & solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl _ alpha (RedoButton (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         ( translated (-0.15) 0 (solidRectangle 0.2 0.5)
-            <> solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
+            & solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
         )
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.8 0.8)
 drawControl w alpha (TimeLabel (x, y)) = translated x y p
   where
     p =
       colored
         (RGBA 0 0 0 alpha)
         (scaled 0.5 0.5 $ lettering (T.pack (showFFloatAlt (Just 4) (state w) "s")))
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 3.0 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 3.0 0.8)
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 3.0 0.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 3.0 0.8)
 drawControl w alpha (SpeedSlider (x, y)) = translated x y p
   where
     p =
@@ -474,9 +474,9 @@ drawControl w alpha (SpeedSlider (x, y)) = translated x y p
         ( translated xoff 0.75 $ scaled 0.5 0.5 $
             lettering (T.pack (showFFloatAlt (Just 2) (playbackSpeed w) "x"))
         )
-        <> colored (RGBA 0 0 0 alpha) (translated xoff 0 (solidRectangle 0.2 0.8))
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 2.8 0.25)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 2.8 0.25)
+        & colored (RGBA 0 0 0 alpha) (translated xoff 0 (solidRectangle 0.2 0.8))
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 2.8 0.25)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 2.8 0.25)
     xoff = playbackSpeedToX (playbackSpeed w)
 drawControl w alpha (ZoomSlider (x, y)) = translated x y p
   where
@@ -486,9 +486,9 @@ drawControl w alpha (ZoomSlider (x, y)) = translated x y p
         ( translated (-1.1) yoff $ scaled 0.5 0.5 $
             lettering (T.pack (show (round (zoomFactor w * 100) :: Int) ++ "%"))
         )
-        <> colored (RGBA 0 0 0 alpha) (translated 0 yoff (solidRectangle 0.8 0.2))
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.25 2.8)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.25 2.8)
+        & colored (RGBA 0 0 0 alpha) (translated 0 yoff (solidRectangle 0.8 0.2))
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 0.25 2.8)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 0.25 2.8)
     yoff = zoomFactorToY (zoomFactor w)
 drawControl w alpha (HistorySlider (x, y)) = translated x y p
   where
@@ -498,9 +498,9 @@ drawControl w alpha (HistorySlider (x, y)) = translated x y p
         ( translated xoff 0.75 $ scaled 0.5 0.5 $
             lettering (T.pack (show i ++ "/" ++ show n))
         )
-        <> colored (RGBA 0.0 0.0 0.0 alpha) (translated xoff 0 (solidRectangle 0.2 0.8))
-        <> colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 4.8 0.25)
-        <> colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 4.8 0.25)
+        & colored (RGBA 0.0 0.0 0.0 alpha) (translated xoff 0 (solidRectangle 0.2 0.8))
+        & colored (RGBA 0.2 0.2 0.2 alpha) (rectangle 4.8 0.25)
+        & colored (RGBA 0.8 0.8 0.8 alpha) (solidRectangle 4.8 0.25)
     xoff = timelinePos (state w) * 4.8 - 2.4
     i = 1 + length (past (state w))
     n = timelineLength (state w)

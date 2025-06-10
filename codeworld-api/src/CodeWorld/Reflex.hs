@@ -70,7 +70,6 @@ module CodeWorld.Reflex
     reflected,
     clipped,
     pictures,
-    (<>),
     (&),
     coordinatePlane,
     codeWorldLogo,
@@ -284,16 +283,16 @@ playPauseButton hoverAlpha running pos = do
       colored
         (RGBA 0 0 0 a)
         (solidPolygon [(-0.2, 0.25), (-0.2, -0.25), (0.2, 0)])
-        <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
     pauseButton a =
       colored
         (RGBA 0 0 0 a)
         ( translated (-0.15) 0 (solidRectangle 0.2 0.6)
-            <> translated 0.15 0 (solidRectangle 0.2 0.6)
+            & translated 0.15 0 (solidRectangle 0.2 0.6)
         )
-        <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
 
 stepButton ::
   ( PerformEvent t m,
@@ -321,10 +320,10 @@ stepButton hoverAlpha pos running = do
       colored
         (RGBA 0 0 0 a)
         ( translated (-0.15) 0 (solidRectangle 0.2 0.5)
-            <> solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
+            & solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
         )
-        <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
 
 fastForwardButton ::
   ( PerformEvent t m,
@@ -349,10 +348,10 @@ fastForwardButton hoverAlpha pos = do
       colored
         (RGBA 0 0 0 a)
         ( solidPolygon [(-0.3, 0.25), (-0.3, -0.25), (-0.05, 0)]
-            <> solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
+            & solidPolygon [(0.05, 0.25), (0.05, -0.25), (0.3, 0)]
         )
-        <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
 
 speedSlider ::
   ( PerformEvent t m,
@@ -386,9 +385,9 @@ speedSlider hoverAlpha pos speedFactor = do
             ( translated xoff 0.75 $ scaled 0.5 0.5 $
                 lettering (T.pack (showFFloatAlt (Just 2) speed "x"))
             )
-            <> colored (RGBA 0 0 0 a) (translated xoff 0 (solidRectangle 0.2 0.8))
-            <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 2.8 0.25)
-            <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 2.8 0.25)
+            & colored (RGBA 0 0 0 a) (translated xoff 0 (solidRectangle 0.2 0.8))
+            & colored (RGBA 0.2 0.2 0.2 a) (rectangle 2.8 0.25)
+            & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 2.8 0.25)
 
 resetViewButton ::
   ( PerformEvent t m,
@@ -412,10 +411,10 @@ resetViewButton hoverAlpha pos needsReset = do
   where
     button a =
       colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.7 0.2)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.2 0.7)
-        <> colored (RGBA 0.0 0.0 0.0 a) (thickRectangle 0.1 0.5 0.5)
-        <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.2 0.7)
+        & colored (RGBA 0.0 0.0 0.0 a) (thickRectangle 0.1 0.5 0.5)
+        & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
 
 panControls ::
   ( PerformEvent t m,
@@ -504,13 +503,13 @@ zoomInButton hoverAlpha pos = do
             (-0.05)
             (0.05)
             ( thickCircle 0.1 0.22
-                <> solidRectangle 0.06 0.25
-                <> solidRectangle 0.25 0.06
-                <> rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
+                & solidRectangle 0.06 0.25
+                & solidRectangle 0.25 0.06
+                & rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
             )
         )
-        <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
 
 zoomOutButton ::
   ( PerformEvent t m,
@@ -537,12 +536,12 @@ zoomOutButton hoverAlpha pos = do
             (-0.05)
             (0.05)
             ( thickCircle 0.1 0.22
-                <> solidRectangle 0.25 0.06
-                <> rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
+                & solidRectangle 0.25 0.06
+                & rotated (- pi / 4) (translated 0.35 0 (solidRectangle 0.2 0.1))
             )
         )
-        <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
-        <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
+        & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.8 0.8)
+        & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.8 0.8)
 
 zoomSlider ::
   ( PerformEvent t m,
@@ -576,9 +575,9 @@ zoomSlider hoverAlpha pos factor = do
             ( translated (-1.1) yoff $ scaled 0.5 0.5 $
                 lettering (T.pack (show (round (z * 100) :: Int) ++ "%"))
             )
-            <> colored (RGBA 0 0 0 a) (translated 0 yoff (solidRectangle 0.8 0.2))
-            <> colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.25 2.8)
-            <> colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.25 2.8)
+            & colored (RGBA 0 0 0 a) (translated 0 yoff (solidRectangle 0.8 0.2))
+            & colored (RGBA 0.2 0.2 0.2 a) (rectangle 0.25 2.8)
+            & colored (RGBA 0.8 0.8 0.8 a) (solidRectangle 0.25 2.8)
 
 zoomIncrement :: Double
 zoomIncrement = 8 ** (1 / 10)

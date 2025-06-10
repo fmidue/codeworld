@@ -360,19 +360,12 @@ a & PictureAnd loc2 bs
     loc1 = getDebugSrcLoc callStack
 a & b = PictureAnd (getDebugSrcLoc callStack) [a, b]
 
-instance Monoid Picture where
-  mempty = blank
-  mconcat = pictures
-
-instance Semigroup Picture where
-  (<>) = (&)
-
 -- | A coordinate plane.  Adding this to your pictures can help you measure distances
 -- more accurately.
 --
 -- Example:
 -- @
--- main = drawingOf (myPicture <> coordinatePlane)
+-- main = drawingOf (myPicture & coordinatePlane)
 -- myPicture = ...
 -- @
 coordinatePlane :: HasCallStack => Picture
