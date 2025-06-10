@@ -17,7 +17,7 @@ docker buildx create --use --name=codeworld-builder --driver docker-container --
 
 echo "Building the dist image..."
 
-docker buildx build --load --cache-from=type=local,src=${CACHE}/dist ${CACHE_TO} --tag codeworld:fmi --file Dockerfile.prod .
+docker buildx build --load --cache-from=type=local,src=${CACHE}/dist ${CACHE_TO} --tag codeworld:fmi .
 
 # Copy keter file from image
 
