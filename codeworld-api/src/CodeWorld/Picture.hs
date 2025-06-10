@@ -210,8 +210,12 @@ polyline :: HasCallStack => [Point] -> Picture
 polyline ps = Polyline (getDebugSrcLoc callStack) ps
 
 -- | A thick sequence of line segments, with given line width and endpoints
+--
+-- The line width must be non-negative.
 thickPolyline :: HasCallStack => Double -> [Point] -> Picture
-thickPolyline n ps = ThickPolyline (getDebugSrcLoc callStack) ps n
+thickPolyline n ps 
+  | n < 0 = error "The line width must be non-negative."
+  | otherwise = ThickPolyline (getDebugSrcLoc callStack) ps n
 
 -- | A thin polygon with these points as vertices
 polygon :: HasCallStack => [Point] -> Picture
@@ -219,8 +223,12 @@ polygon ps = Polygon (getDebugSrcLoc callStack) ps
 
 -- | A thick polygon with this line width and these points as
 -- vertices
+--
+-- The line width must be non-negative.
 thickPolygon :: HasCallStack => Double -> [Point] -> Picture
-thickPolygon n ps = ThickPolygon (getDebugSrcLoc callStack) ps n
+thickPolygon n ps 
+  | n < 0 = error "The line width must be non-negative."
+  | otherwise = ThickPolygon (getDebugSrcLoc callStack) ps n
 
 -- | A solid polygon with these points as vertices
 solidPolygon :: HasCallStack => [Point] -> Picture
@@ -231,16 +239,24 @@ curve :: HasCallStack => [Point] -> Picture
 curve ps = Curve (getDebugSrcLoc callStack) ps
 
 -- | A thick smooth curve with this line width, passing through these points.
+--
+-- The line width must be non-negative.
 thickCurve :: HasCallStack => Double -> [Point] -> Picture
-thickCurve n ps = ThickCurve (getDebugSrcLoc callStack) ps n
+thickCurve n ps
+  | n < 0 = error "The line width must be non-negative."
+  | otherwise = ThickCurve (getDebugSrcLoc callStack) ps n
 
 -- | A smooth closed curve passing through these points.
 closedCurve :: HasCallStack => [Point] -> Picture
 closedCurve ps = ClosedCurve (getDebugSrcLoc callStack) ps
 
 -- | A thick smooth closed curve with this line width, passing through these points.
+--
+-- The line width must be non-negative.
 thickClosedCurve :: HasCallStack => Double -> [Point] -> Picture
-thickClosedCurve n ps = ThickClosedCurve (getDebugSrcLoc callStack) ps n
+thickClosedCurve n ps 
+  | n < 0 = error "The line width must be non-negative."
+  | otherwise = ThickClosedCurve (getDebugSrcLoc callStack) ps n
 
 -- | A solid smooth closed curve passing through these points.
 solidClosedCurve :: HasCallStack => [Point] -> Picture
@@ -258,8 +274,12 @@ solidRectangle :: HasCallStack => Double -> Double -> Picture
 solidRectangle w h = SolidRectangle (getDebugSrcLoc callStack) w h
 
 -- | A thick rectangle, with this line width, and width and height
+--
+-- The line width must be non-negative.
 thickRectangle :: HasCallStack => Double -> Double -> Double -> Picture
-thickRectangle lw w h = ThickRectangle (getDebugSrcLoc callStack) lw w h
+thickRectangle lw w h 
+  | lw < 0 = error "The line width must be non-negative."
+  | otherwise = ThickRectangle (getDebugSrcLoc callStack) lw w h
 
 -- | A thin circle, with this radius
 circle :: HasCallStack => Double -> Picture
@@ -267,9 +287,10 @@ circle = Circle (getDebugSrcLoc callStack)
 
 -- | A thick circle, with this line width and radius
 --
--- The line width must not be greater than its diameter.
+-- The line width must be non-negative and not greater than its diameter.
 thickCircle :: HasCallStack => Double -> Double -> Picture
 thickCircle a r 
+  | a < 0 = error "The line width must be non-negative."
   | a <= 2 * r = ThickCircle (getDebugSrcLoc callStack) a r
   | otherwise = error "The line width of a thickCircle must not be greater than its diameter."
 
@@ -282,9 +303,11 @@ arc b e r = Arc (getDebugSrcLoc callStack) b e r
 -- | A thick arc with this line width, starting and ending at these angles,
 -- with this radius.
 --
--- Angles are in radians.
+-- Angles are in radians. The line width must be non-negative.
 thickArc :: HasCallStack => Double -> Double -> Double -> Double -> Picture
-thickArc w b e r = ThickArc (getDebugSrcLoc callStack) b e r w
+thickArc w b e r 
+  | w < 0 = error "The line width must be non-negative."
+  | otherwise = ThickArc (getDebugSrcLoc callStack) b e r w
 
 -- | A solid circle, with this radius
 solidCircle :: HasCallStack => Double -> Picture
