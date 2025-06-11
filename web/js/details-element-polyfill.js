@@ -1,1 +1,0 @@
-../../third_party/details-element-polyfill/details-element-polyfill.js
