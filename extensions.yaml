@@ -1,0 +1,6 @@
+codeworld:
+  - []
+haskell:
+  - LambdaCase
+  - NoTemplateHaskell
+  - TupleSections
