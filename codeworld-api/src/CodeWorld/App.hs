@@ -28,13 +28,11 @@ module CodeWorld.App
     subrule,
     rules,
     applicationOf,
-    unsafeMultiApplicationOf,
   )
 where
 
 import CodeWorld
 import Data.List (foldl')
-import System.Random (StdGen)
 
 data Rule :: * -> * where
   EventRule :: (Int -> Event -> state -> state) -> Rule state
@@ -74,18 +72,5 @@ applicationOf w rules = activityOf w event picture
     eventHandlers (Rules rs) = concatMap eventHandlers rs
     eventHandlers _ = []
     pictureHandlers (PictureRule f) = [f 0]
-    pictureHandlers (Rules rs) = concatMap pictureHandlers rs
-    pictureHandlers _ = []
-
-unsafeMultiApplicationOf :: Int -> (StdGen -> state) -> [Rule state] -> IO ()
-unsafeMultiApplicationOf n initial rules =
-  unsafeGroupActivityOf n initial event picture
-  where
-    event k ev = foldl' (.) id [f k ev | f <- concatMap eventHandlers rules]
-    picture k w = pictures [pic k w | pic <- concatMap pictureHandlers rules]
-    eventHandlers (EventRule f) = [f]
-    eventHandlers (Rules rs) = concatMap eventHandlers rs
-    eventHandlers _ = []
-    pictureHandlers (PictureRule f) = [f]
     pictureHandlers (Rules rs) = concatMap pictureHandlers rs
     pictureHandlers _ = []

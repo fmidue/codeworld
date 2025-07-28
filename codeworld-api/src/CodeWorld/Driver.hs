@@ -69,15 +69,12 @@ import qualified Data.Text as T
 import GHC.Fingerprint.Type
 import GHC.Generics
 import GHC.Stack
-import GHC.StaticPtr
 import Numeric (showFFloatAlt)
 import qualified Reflex as R
 import qualified Reflex.Host.Class as R
 import System.IO.Unsafe
 import System.Mem.StableName
-import System.Random
 import Text.Printf
-import Text.Read
 
 #if MIN_VERSION_witherable(0, 4, 0)
 import Witherable
@@ -88,16 +85,10 @@ import Data.Witherable
 #ifdef ghcjs_HOST_OS
 
 import CodeWorld.CanvasM (MonadCanvas, CanvasM, runCanvasM)
-import CodeWorld.CollaborationUI (SetupPhase(..), Step(..), UIState)
-import qualified CodeWorld.CollaborationUI as CUI
-import CodeWorld.Message
-import CodeWorld.Prediction
 import Control.DeepSeq
 import Control.Monad.Identity
 import qualified Control.Monad.Trans.State as State
 import Data.Aeson (ToJSON(..), (.=), object)
-import Data.Hashable
-import qualified Data.JSString
 import GHCJS.Concurrent (withoutPreemption)
 import GHCJS.DOM
 import qualified GHCJS.DOM.DOMRect as DOMRect
@@ -117,10 +108,7 @@ import GHCJS.Types
 import JavaScript.Object
 import qualified JavaScript.Web.Canvas as Canvas
 import qualified JavaScript.Web.Canvas.Internal as Canvas
-import qualified JavaScript.Web.Location as Loc
-import qualified JavaScript.Web.MessageEvent as WS
 import qualified JavaScript.Web.Performance as Performance
-import qualified JavaScript.Web.WebSocket as WS
 import Unsafe.Coerce
 
 #else
@@ -129,6 +117,7 @@ import CodeWorld.CanvasM (MonadCanvas, runCanvasM)
 import Data.Time.Clock
 import qualified Graphics.Blank as Canvas
 import System.Environment
+import Text.Read
 
 #endif
 
@@ -1038,32 +1027,12 @@ modifyMVarIfDifferent var f =
       Nothing -> return (s0, False)
       Just s1 -> return (s1, True)
 
-data GameToken
-  = FullToken
-      { tokenDeployHash :: Text,
-        tokenNumPlayers :: Int,
-        tokenInitial :: StaticKey,
-        tokenStep :: StaticKey,
-        tokenEvent :: StaticKey,
-        tokenDraw :: StaticKey
-      }
-  | SteplessToken
-      { tokenDeployHash :: Text,
-        tokenNumPlayers :: Int,
-        tokenInitial :: StaticKey,
-        tokenEvent :: StaticKey,
-        tokenDraw :: StaticKey
-      }
-  | PartialToken {tokenDeployHash :: Text}
-  deriving (Generic)
 
 #if !MIN_VERSION_base(4,15,0)
 deriving instance Generic Fingerprint
 #endif
 
 instance Serialize Fingerprint
-
-instance Serialize GameToken
 
 #ifdef ghcjs_HOST_OS
 
@@ -1119,257 +1088,6 @@ onEvents canvas handler = do
         pos <- getMousePos canvas
         liftIO $ handler (PointerMovement pos)
     return ()
-
-encodeEvent :: (Timestamp, Maybe Event) -> String
-encodeEvent = show
-
-decodeEvent :: String -> Maybe (Timestamp, Maybe Event)
-decodeEvent = readMaybe
-
-data GameState s
-    = Main (UIState SMain)
-    | Connecting WS.WebSocket
-                 (UIState SConnect)
-    | Waiting WS.WebSocket
-              GameId
-              PlayerId
-              (UIState SWait)
-    | Running WS.WebSocket
-              GameId
-              Timestamp
-              PlayerId
-              (Future s)
-
-gameTime :: GameState s -> Timestamp -> Double
-gameTime (Running _ _ tstart _ _) t = t - tstart
-gameTime _ _ = 0
-
--- It's worth trying to keep the canonical animation rate exactly representable
--- as a float, to minimize the chance of divergence due to rounding error.
-gameRate :: Double
-gameRate = 1 / 16
-
-gameStep :: (Double -> s -> s) -> Double -> GameState s -> GameState s
-gameStep _ t (Main s) = Main (CUI.step t s)
-gameStep _ t (Connecting ws s) = Connecting ws (CUI.step t s)
-gameStep _ t (Waiting ws gid pid s) = Waiting ws gid pid (CUI.step t s)
-gameStep step t (Running ws gid tstart pid s) =
-    Running ws gid tstart pid (currentTimePasses step gameRate (t - tstart) s)
-
-gameDraw ::
-       (Double -> s -> s)
-    -> (PlayerId -> s -> Picture)
-    -> GameState s
-    -> Timestamp
-    -> Picture
-gameDraw _ _ (Main s) _ = CUI.picture s
-gameDraw _ _ (Connecting _ s) _ = CUI.picture s
-gameDraw _ _ (Waiting _ _ _ s) _ = CUI.picture s
-gameDraw step draw (Running _ _ tstart pid s) t =
-    draw pid (currentState step gameRate (t - tstart) s)
-
-handleServerMessage ::
-       Int
-    -> (StdGen -> s)
-    -> (Double -> s -> s)
-    -> (PlayerId -> Event -> s -> s)
-    -> MVar (GameState s)
-    -> ServerMessage
-    -> IO ()
-handleServerMessage numPlayers initial stepHandler eventHandler gsm sm = do
-    modifyMVar_ gsm $ \gs -> do
-        t <- getTime
-        case (sm, gs) of
-            (GameAborted, _) -> return initialGameState
-            (JoinedAs pid gid, Connecting ws s) ->
-                return (Waiting ws gid pid (CUI.startWaiting gid s))
-            (PlayersWaiting m n, Waiting ws gid pid s) ->
-                return (Waiting ws gid pid (CUI.updatePlayers n m s))
-            (Started, Waiting ws gid pid _) -> do
-                let s = initFuture (initial (mkStdGen (hash gid))) numPlayers
-                return (Running ws gid t pid s)
-            (OutEvent pid eo, Running ws gid tstart mypid s) ->
-                case decodeEvent eo of
-                    Just (t', event) ->
-                        let ours = pid == mypid
-                            func = eventHandler pid <$> event -- might be a ping (Nothing)
-                            result
-                                | ours = s -- we already took care of our events
-                                | otherwise =
-                                    addEvent stepHandler gameRate mypid t' func s
-                        in return (Running ws gid tstart mypid result)
-                    Nothing -> return (Running ws gid tstart mypid s)
-            _ -> return gs
-    return ()
-
-gameHandle ::
-       Int
-    -> (StdGen -> s)
-    -> (Double -> s -> s)
-    -> (PlayerId -> Event -> s -> s)
-    -> GameToken
-    -> MVar (GameState s)
-    -> Event
-    -> IO ()
-gameHandle numPlayers initial stepHandler eventHandler token gsm event = do
-    gs <- takeMVar gsm
-    case gs of
-        Main s ->
-            case CUI.event event s of
-                ContinueMain s' -> do
-                    putMVar gsm (Main s')
-                Create s' -> do
-                    ws <-
-                        connectToGameServer
-                            (handleServerMessage
-                                 numPlayers
-                                 initial
-                                 stepHandler
-                                 eventHandler
-                                 gsm)
-                    sendClientMessage ws (NewGame numPlayers (encode token))
-                    putMVar gsm (Connecting ws s')
-                Join gid s' -> do
-                    ws <-
-                        connectToGameServer
-                            (handleServerMessage
-                                 numPlayers
-                                 initial
-                                 stepHandler
-                                 eventHandler
-                                 gsm)
-                    sendClientMessage ws (JoinGame gid (encode token))
-                    putMVar gsm (Connecting ws s')
-        Connecting ws s ->
-            case CUI.event event s of
-                ContinueConnect s' -> do
-                    putMVar gsm (Connecting ws s')
-                CancelConnect s' -> do
-                    WS.close Nothing Nothing ws
-                    putMVar gsm (Main s')
-        Waiting ws gid pid s ->
-            case CUI.event event s of
-                ContinueWait s' -> do
-                    putMVar gsm (Waiting ws gid pid s')
-                CancelWait s' -> do
-                    WS.close Nothing Nothing ws
-                    putMVar gsm (Main s')
-        Running ws gid tstart pid f -> do
-            t <- getTime
-            let gameState0 = currentState stepHandler gameRate (t - tstart) f
-            let eventFun = eventHandler pid event
-            case ifDifferent eventFun gameState0 of
-                Nothing -> putMVar gsm gs
-                Just _ -> do
-                    sendClientMessage
-                        ws
-                        (InEvent (encodeEvent (gameTime gs t, Just event)))
-                    let f1 =
-                            addEvent
-                                stepHandler
-                                gameRate
-                                pid
-                                (t - tstart)
-                                (Just eventFun)
-                                f
-                    putMVar gsm (Running ws gid tstart pid f1)
-
-getWebSocketURL :: IO JSString
-getWebSocketURL = do
-    loc <- Loc.getWindowLocation
-    proto <- Loc.getProtocol loc
-    hostname <- Loc.getHostname loc
-    let url =
-            case proto of
-                "http:" -> "ws://" <> hostname <> ":9160/gameserver"
-                "https:" -> "wss://" <> hostname <> "/gameserver"
-                _ -> error "Unrecognized protocol"
-    return url
-
-connectToGameServer :: (ServerMessage -> IO ()) -> IO WS.WebSocket
-connectToGameServer handleServerMessage = do
-    let handleWSRequest m = do
-            maybeSM <- decodeServerMessage m
-            case maybeSM of
-                Nothing -> return ()
-                Just sm -> handleServerMessage sm
-    wsURL <- getWebSocketURL
-    let req =
-            WS.WebSocketRequest
-            { url = wsURL
-            , protocols = []
-            , onClose = Just $ \_ -> handleServerMessage GameAborted
-            , onMessage = Just handleWSRequest
-            }
-    WS.connect req
-  where
-    decodeServerMessage :: WS.MessageEvent -> IO (Maybe ServerMessage)
-    decodeServerMessage m =
-        case WS.getData m of
-            WS.StringData str -> do
-                return $ readMaybe (Data.JSString.unpack str)
-            _ -> return Nothing
-
-sendClientMessage :: WS.WebSocket -> ClientMessage -> IO ()
-sendClientMessage ws msg = WS.send (encodeClientMessage msg) ws
-  where
-    encodeClientMessage :: ClientMessage -> JSString
-    encodeClientMessage m = Data.JSString.pack (show m)
-
-initialGameState :: GameState s
-initialGameState = Main CUI.initial
-
-foreign import javascript unsafe "cw$deterministic_math();"
-    enableDeterministicMath :: IO ()
-
-runGame ::
-       GameToken
-    -> Int
-    -> (StdGen -> s)
-    -> (Double -> s -> s)
-    -> (Int -> Event -> s -> s)
-    -> (Int -> s -> Picture)
-    -> IO ()
-runGame token numPlayers initial stepHandler eventHandler drawHandler = do
-    enableDeterministicMath
-    let fullStepHandler dt = stepHandler dt . eventHandler (-1) (TimePassing dt)
-
-    canvas <- getCanvas
-    setCanvasSize canvas canvas
-
-    Just window <- currentWindow
-    _ <- on window resize $ do
-        liftIO $ setCanvasSize canvas canvas
-
-    frameRenderer <- createFrameRenderer canvas
-
-    currentGameState <- newMVar initialGameState
-    onEvents canvas $
-        gameHandle
-            numPlayers
-            initial
-            fullStepHandler
-            eventHandler
-            token
-            currentGameState
-
-    let go t0 lastFrame = do
-            gs <- readMVar currentGameState
-            let pic = gameDraw fullStepHandler drawHandler gs t0
-            picFrame <- makeStableName $! pic
-            when (picFrame /= lastFrame) $ frameRenderer pic
-            t1 <- nextFrame
-            modifyMVar_ currentGameState $ return . gameStep fullStepHandler t1
-            go t1 picFrame
-    t0 <- nextFrame
-    nullFrame <- makeStableName undefined
-    go t0 nullFrame
-
-getDeployHash :: IO Text
-getDeployHash = pFromJSVal <$> js_getDeployHash
-
-foreign import javascript "/[&?]dhash=(.{22})/.exec(window.location.search)[1]"
-    js_getDeployHash :: IO JSVal
 
 propagateErrors :: ThreadId -> IO () -> IO ()
 propagateErrors tid action = action `catch` \ (e :: SomeException) -> throwTo tid e
@@ -1726,19 +1444,6 @@ runInspect
     -> (s -> Picture)
     -> IO ()
 runInspect initial step event draw _rawDraw = run initial step event draw
-
-getDeployHash :: IO Text
-getDeployHash = error "game API unimplemented in stand-alone interface mode"
-
-runGame
-    :: GameToken
-    -> Int
-    -> (StdGen -> s)
-    -> (Double -> s -> s)
-    -> (Int -> Event -> s -> s)
-    -> (Int -> s -> Picture)
-    -> IO ()
-runGame = error "game API unimplemented in stand-alone interface mode"
 
 #endif
 

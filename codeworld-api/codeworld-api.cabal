@@ -71,8 +71,6 @@ Library
     Js-sources:        jsbits/sim_fp.js
     Build-depends:     ghcjs-base,
                        ghcjs-prim,
-                       codeworld-game-api,
-                       codeworld-prediction,
                        ghcjs-dom             >= 0.9 && < 0.9.4,
                        transformers
   else
@@ -132,8 +130,6 @@ Test-suite unit-tests
     Js-sources:        jsbits/sim_fp.js
     Build-depends:     ghcjs-base,
                        ghcjs-prim,
-                       codeworld-game-api,
-                       codeworld-prediction,
                        ghcjs-dom             >= 0.9 && < 0.9.4,
                        transformers
   else

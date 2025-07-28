@@ -21,8 +21,6 @@ module CodeWorld
     animationOf,
     activityOf,
     debugActivityOf,
-    groupActivityOf,
-    unsafeGroupActivityOf,
 
     -- * Pictures
     Picture,
