@@ -127,16 +127,14 @@ COPY --chown=codeworld base.sh ./
 
 RUN $CODEWORLD_DIR/mirror/get_mirrored
 
-COPY --chown=codeworld codeworld-prediction/ codeworld-prediction/
 COPY --chown=codeworld codeworld-error-sanitizer/ codeworld-error-sanitizer/ 
 COPY --chown=codeworld codeworld-api/ codeworld-api/
 COPY --chown=codeworld codeworld-base/ codeworld-base/
-COPY --chown=codeworld codeworld-game-api/ codeworld-game-api/ 
 COPY --chown=codeworld codeworld-available-pkgs/ codeworld-available-pkgs/
 
 RUN <<BUILD_CODEWORLD_MIRROR
 set -e
-bash -c "source base.sh && cabal_install --ghcjs ./codeworld-prediction ./codeworld-error-sanitizer ./codeworld-api ./codeworld-base ./codeworld-game-api ./codeworld-available-pkgs"
+bash -c "source base.sh && cabal_install --ghcjs ./codeworld-error-sanitizer ./codeworld-api ./codeworld-base ./codeworld-available-pkgs"
 
 ghcjs-pkg hide base-compat
 ghcjs-pkg hide ghcjs-dom-jsffi
@@ -175,11 +173,10 @@ WORKDIR $CODEWORLD_DIR
 COPY --chown=codeworld codeworld-server/ codeworld-server/
 COPY --chown=codeworld codeworld-compiler/ codeworld-compiler/
 COPY --chown=codeworld codeworld-requirements/ codeworld-requirements/
-COPY --chown=codeworld codeworld-game-server/ codeworld-game-server/
 COPY --chown=codeworld codeworld-account/ codeworld-account/
 COPY --chown=codeworld codeworld-auth/ codeworld-auth/
 
-RUN bash -c "source base.sh && cabal_install ./codeworld-server ./codeworld-error-sanitizer ./codeworld-compiler ./codeworld-requirements ./codeworld-game-api ./codeworld-prediction ./codeworld-api ./codeworld-game-server ./codeworld-account ./codeworld-auth"
+RUN bash -c "source base.sh && cabal_install ./codeworld-server ./codeworld-error-sanitizer ./codeworld-compiler ./codeworld-requirements ./codeworld-api ./codeworld-account ./codeworld-auth"
 
 WORKDIR $CODEWORLD_DIR/build/CodeMirror
 

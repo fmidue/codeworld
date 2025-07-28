@@ -22,7 +22,6 @@ module Internal.CodeWorld
     animationOf,
     activityOf,
     debugActivityOf,
-    groupActivityOf,
     traced,
   )
 where
@@ -151,40 +150,6 @@ debugActivityOf (initial, event, draw) =
       (initial rs)
       (\ev w -> event (w, fromCWEvent ev))
       (toCWPic . draw)
-    `catch` reportError
-
--- | A program that interacts with multiple different users by
--- responding to their pointer and keyboard events.
---
--- The arguments to this function are similar 'activityOf',
--- except that:
---
--- 1. A first argument, a 'Number' gives the desired number of
---    players.
--- 2. The @change@ function receives an extra argument telling
---    which player intiated the event.
--- 3. The @picture@ function receives an extra argument with
---    the player for whom the picture should be built.
---
--- The activity will always begin with a "lobby", where players
--- can create new games or join existing games with a code.
--- Once the desired number of players have joined, the activity
--- will begin.
-groupActivityOf ::
-  ( Number,
-    [Number] -> state,
-    (state, Event, Number) -> state,
-    (state, Number) -> Picture
-  ) ->
-  Program
-groupActivityOf (players, initial, event, picture) =
-  -- This is safe ONLY because codeworld-base does not export the
-  -- IO combinators that allow for choosing divergent clients.
-  CW.unsafeGroupActivityOf
-    (toInt players)
-    (initial . randomsFrom)
-    (\player ev state -> event (state, fromCWEvent ev, fromInt player + 1))
-    (\player state -> toCWPic (picture (state, fromInt player + 1)))
     `catch` reportError
 
 chooseRandoms :: IO [Number]

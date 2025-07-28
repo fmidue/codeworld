@@ -33,12 +33,10 @@ import CodeWorld.Picture
 import Data.Text (Text)
 import qualified Data.Text as T
 import GHC.Prim
-import GHC.StaticPtr
 import GHC.Types
 import Numeric (showFFloatAlt)
 import System.IO
 import System.IO.Unsafe
-import System.Random
 
 --------------------------------------------------------------------------------
 -- Common code for activity, interaction, animation and simulation interfaces
@@ -675,73 +673,6 @@ debugActivityOf initial change picture = do
     (wrappedDraw statefulDebugControls (picture . present))
     (picture . present . state)
 
--- | Runs an interactive multi-user CodeWorld program that is joined by several
--- participants over the internet.
---
--- Example: a skeleton of a game for two players
---
--- @
--- &#x7b;-\# LANGUAGE StaticPointers, OverloadedStrings \#-&#x7d;
--- import CodeWorld
---
--- main = groupActivityOf 2 init step view
---   where
---     init = static (\\gen -> {- initialize state of the game world, possibly using random number generator -})
---     step = static (\\playerNumber event world -> {- modify world based on event occuring for given player -})
---     view = static (\\playerNumber world -> {- generate a picture that will be shown to given player in the given state of the world-})
--- @
-groupActivityOf ::
-  -- | The number of participants to expect.  The participants will be
-  -- numbered starting at 0.
-  Int ->
-  -- | The function to create initial state of the activity. 'System.Random.StdGen' parameter can be used to generate random numbers.
-  StaticPtr (StdGen -> world) ->
-  -- | The event handling function, which updates the state given a
-  --   participant number and user interface event.
-  StaticPtr (Int -> Event -> world -> world) ->
-  -- | The visualization function, which converts a participant number
-  --   and the state into a picture to display.
-  StaticPtr (Int -> world -> Picture) ->
-  IO ()
-groupActivityOf numPlayers initial event draw = do
-  hFlush stdout
-  dhash <- getDeployHash
-  let token =
-        SteplessToken
-          { tokenDeployHash = dhash,
-            tokenNumPlayers = numPlayers,
-            tokenInitial = staticKey initial,
-            tokenEvent = staticKey event,
-            tokenDraw = staticKey draw
-          }
-  runGame
-    token
-    numPlayers
-    (deRefStaticPtr initial)
-    (const id)
-    (deRefStaticPtr event)
-    (deRefStaticPtr draw)
-
--- | A version of 'groupActivityOf' that avoids static pointers, and does not
--- check for consistency.
-unsafeGroupActivityOf ::
-  -- | The number of participants to expect.  The participants will be
-  -- numbered starting at 0.
-  Int ->
-  -- | The initial state of the activity.
-  (StdGen -> world) ->
-  -- | The event handling function, which updates the state given a
-  --   participant number and user interface event.
-  (Int -> Event -> world -> world) ->
-  -- | The visualization function, which converts a participant number
-  --   and the state into a picture to display.
-  (Int -> world -> Picture) ->
-  IO ()
-unsafeGroupActivityOf numPlayers initial event draw = do
-  hFlush stdout
-  dhash <- getDeployHash
-  let token = PartialToken dhash
-  runGame token numPlayers initial (const id) event draw
 
 -- | Prints a debug message to the CodeWorld console when a value is forced.
 -- This is equivalent to the similarly named function in `Debug.Trace`, except

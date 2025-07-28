@@ -24,7 +24,6 @@ module Internal.Exports
     animationOf,
     activityOf,
     debugActivityOf,
-    groupActivityOf,
 
     -- * Pictures
     Picture,

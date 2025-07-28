@@ -6,9 +6,6 @@ packages:
   - codeworld-auth
   # - codeworld-compiler
   - codeworld-error-sanitizer
-  - codeworld-game-api
-  - codeworld-game-server
-  - codeworld-prediction
   # - codeworld-server
   - codeworld-base
 
