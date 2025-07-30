@@ -14,6 +14,7 @@ cp -r third_party/SourceCodePro web/SourceCodePro
 
 cp third_party/jsdiff/diff.min.js web/js/diff.min.js
 
+mkdir -p web/js/codemirror-buttons/
 cp third_party/codemirror-buttons/buttons.js web/js/codemirror-buttons/buttons.js
 
 cp -r codeworld-base/dist/doc/html/codeworld-base web/doc
