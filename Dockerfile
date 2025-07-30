@@ -173,10 +173,8 @@ WORKDIR $CODEWORLD_DIR
 COPY --chown=codeworld codeworld-server/ codeworld-server/
 COPY --chown=codeworld codeworld-compiler/ codeworld-compiler/
 COPY --chown=codeworld codeworld-requirements/ codeworld-requirements/
-COPY --chown=codeworld codeworld-account/ codeworld-account/
-COPY --chown=codeworld codeworld-auth/ codeworld-auth/
 
-RUN bash -c "source base.sh && cabal_install ./codeworld-server ./codeworld-error-sanitizer ./codeworld-compiler ./codeworld-requirements ./codeworld-api ./codeworld-account ./codeworld-auth"
+RUN bash -c "source base.sh && cabal_install ./codeworld-server ./codeworld-error-sanitizer ./codeworld-compiler ./codeworld-requirements ./codeworld-api"
 
 WORKDIR $CODEWORLD_DIR/build/CodeMirror
 
