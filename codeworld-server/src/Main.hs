@@ -25,14 +25,6 @@
 -}
 module Main where
 
-import CodeWorld.Account (UserId)
-import CodeWorld.Auth
-  ( AuthConfig,
-    authMethod,
-    authRoutes,
-    authenticated,
-    getAuthConfig,
-  )
 import CodeWorld.Compile
 import CodeWorld.Compile.Base
 import Control.Applicative
@@ -80,8 +72,7 @@ maxSimultaneousErrorChecks :: Int
 maxSimultaneousErrorChecks = 2
 
 data Context = Context
-  { authConfig :: AuthConfig,
-    compileSem :: MSem Int,
+  { compileSem :: MSem Int,
     errorSem :: MSem Int,
     baseSem :: MSem Int
   }
@@ -97,26 +88,14 @@ main = do
 makeContext :: IO Context
 makeContext = do
   ctx <-
-    Context <$> (getAuthConfig =<< getCurrentDirectory)
-      <*> MSem.new maxSimultaneousCompiles
+    Context
+      <$> MSem.new maxSimultaneousCompiles
       <*> MSem.new maxSimultaneousErrorChecks
       <*> MSem.new 1
-  putStrLn $ "Authentication method: " ++ authMethod (authConfig ctx)
   return ctx
 
 -- | A CodeWorld Snap API action
 type CodeWorldHandler = Context -> Snap ()
-
--- | A public handler that can be called from both authenticated and
---  unauthenticated clients and that does not need access to the user
---  ID.
-public :: CodeWorldHandler -> CodeWorldHandler
-public = id
-
--- | A private handler that can only be called from authenticated
---  clients and needs access to the user ID.
-private :: (UserId -> CodeWorldHandler) -> CodeWorldHandler
-private handler ctx = authenticated (flip handler ctx) (authConfig ctx)
 
 -- A revised upload policy that allows up to 8 MB of uploaded data in a
 -- request.  This is needed to handle uploads of projects including editor
@@ -176,7 +155,7 @@ withProgramLock (BuildMode mode) (ProgramId hash) action = do
   withFileLock tmpFile Exclusive (const action)
 
 compileHandler :: CodeWorldHandler
-compileHandler = public $ \ctx -> do
+compileHandler ctx = do
   mode <- getBuildMode
   Just source <- getParam "source"
   let programId = sourceToProgramId source
@@ -208,7 +187,7 @@ compileHandler = public $ \ctx -> do
   liftIO $ removeDirectoryIfExists (deployRootDir mode)
 
 errorCheckHandler :: CodeWorldHandler
-errorCheckHandler = public $ \ctx -> do
+errorCheckHandler ctx = do
   mode <- getBuildMode
   Just source <- getParam "source"
   (status, output) <- liftIO $ errorCheck ctx mode source
@@ -229,14 +208,14 @@ getHashParam allowDeploy mode = do
       | otherwise -> pass
 
 loadSourceHandler :: CodeWorldHandler
-loadSourceHandler = public $ \ctx -> do
+loadSourceHandler ctx = do
   mode <- getBuildMode
   programId <- getHashParam False mode
   modifyResponse $ setContentType "text/x-haskell"
   serveFile (sourceRootDir mode </> sourceFile programId)
 
 runHandler :: CodeWorldHandler
-runHandler = public $ \ctx -> do
+runHandler ctx = do
   mode <- getBuildMode
   programId <- getHashParam True mode
   result <-
@@ -249,7 +228,7 @@ runHandler = public $ \ctx -> do
     serveFile (buildRootDir mode </> targetFile programId)
 
 runBaseHandler :: CodeWorldHandler
-runBaseHandler = public $ \ctx -> do
+runBaseHandler ctx = do
   maybeVer <- fmap T.decodeUtf8 <$> getParam "version"
   hasProgram <-
     (\mode hash dhash -> mode && (hash || dhash))
@@ -278,7 +257,7 @@ runBaseHandler = public $ \ctx -> do
     hasParam name = (/= Nothing) <$> getParam name
 
 runMessageHandler :: CodeWorldHandler
-runMessageHandler = public $ \ctx -> do
+runMessageHandler ctx = do
   mode <- getBuildMode
   programId <- getHashParam False mode
   modifyResponse $ setContentType "text/plain"
@@ -294,7 +273,7 @@ escapeCode input = foldr
     toBeEscaped = ["${","`"]
 
 serveEditor :: CodeWorldHandler
-serveEditor = public $ \ctx -> do
+serveEditor ctx = do
   msource <- getParam "source"
   modifyResponse $ setContentType "text/html"
   template <- liftIO $ readFile "web/env.html"
@@ -303,7 +282,7 @@ serveEditor = public $ \ctx -> do
   writeBS $ T.encodeUtf8 $ T.pack content
 
 indentHandler :: CodeWorldHandler
-indentHandler = public $ \ctx -> do
+indentHandler ctx = do
   mode <- getBuildMode
   Just source <- getParam "source"
   reformat source `catch` handleError
@@ -317,7 +296,7 @@ indentHandler = public $ \ctx -> do
       writeLBS $ LB.fromStrict $ T.encodeUtf8 $ T.pack (show e)
 
 logHandler :: CodeWorldHandler
-logHandler = public $ \ctx -> do
+logHandler ctx = do
   Just message <- fmap T.decodeUtf8 <$> getParam "message"
   title <-
     fromMaybe "User-reported unhelpful error message"
