@@ -30,8 +30,6 @@ Executable codeworld-server
     base,
     base64-bytestring,
     bytestring,
-    codeworld-account,
-    codeworld-auth,
     codeworld-compiler,
     cryptonite,
     data-default,
