@@ -2,6 +2,8 @@
 
 set -u
 
+rm -rf web/codeworld-base.txt web/mirrored web/js/codemirror-compressed.js web/SourceCodePro web/js/diff.min.js web/js/codemirror-buttons/buttons.js web/doc web/doc-haskell web/index.html web/gallery.html web/gallery-icfp17.html web/blockly web/js/blocks_lib.js web/js/blocks_out.js web/js/blocks_rts.js web/js/blocks_ain.js web/css/ambiance.css web/css/codemirror.css web/css/lint.css web/css/show-hint.css web/ims web/help/ims
+
 cp codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt web/codeworld-base.txt
 grep -r -s -h 'pattern\s*[A-Za-z_0-9]*\s*::.*' /home/codeworld/codeworld-base >> $HOME/web/codeworld-base.txt
 
@@ -14,9 +16,6 @@ cp -r third_party/SourceCodePro web/SourceCodePro
 
 cp third_party/jsdiff/diff.min.js web/js/diff.min.js
 
-cp third_party/details-element-polyfill/details-element-polyfill.js web/js/details-element-polyfill.js
-
-mkdir -p web/js/codemirror-buttons/
 cp third_party/codemirror-buttons/buttons.js web/js/codemirror-buttons/buttons.js
 
 cp -r codeworld-base/dist/doc/html/codeworld-base web/doc
