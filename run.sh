@@ -33,4 +33,4 @@ mkdir -p data/blocklyXML/projects
 
 mkdir -p log
 
-run ../build/bin codeworld-server -p $PORT --no-access-log
+run . ./build/bin/codeworld-server -p $PORT --no-access-log
