@@ -149,35 +149,17 @@ site :: CodeWorldHandler
 site ctx =
   let routes =
         [ 
-          -- ("loadProject", loadProjectHandler ctx),
-          -- ("saveProject", saveProjectHandler ctx),
-          -- ("deleteProject", deleteProjectHandler ctx),
-          -- ("createFolder", createFolderHandler ctx),
-          -- ("deleteFolder", deleteFolderHandler ctx),
-          -- ("listFolder", listFolderHandler False ctx),
-          -- ("listFolders", listFolderHandler True ctx),
-          -- ("updateChildrenIndexes", updateChildrenIndexesHandler ctx),
-          -- ("shareFolder", shareFolderHandler ctx),
-          -- ("shareContent", shareContentHandler ctx),
-          -- ("moveProject", moveProjectHandler ctx),
           ("compile", compileHandler ctx),
           ("errorCheck", errorCheckHandler ctx),
-          -- ("saveXMLhash", saveXMLHashHandler ctx),
-          -- ("loadXML", loadXMLHandler ctx),
           ("loadSource", loadSourceHandler ctx),
           ("run", runHandler ctx),
           ("runJS", runHandler ctx),
           ("runBaseJS", runBaseHandler ctx),
           ("runMsg", runMessageHandler ctx),
-          -- ("haskell", serveFile "web/env.html"),
           ("haskell", serveEditor ctx),
-          -- ("blocks", serveFile "web/blocks.html"),
-          -- ("funblocks", serveFile "web/blocks.html"),
           ("indent", indentHandler ctx),
-          -- ("gallery/:shareHash", galleryHandler ctx),
           ("log", logHandler ctx)
         ]
-          ++ authRoutes (authConfig ctx)
    in route routes <|> serveDirectory "web"
 
 -- A DirectoryConfig that sets the cache-control header to avoid errors when new
@@ -187,195 +169,11 @@ dirConfig = defaultDirectoryConfig {preServeHook = disableCache}
   where
     disableCache _ = modifyRequest (addHeader "Cache-control" "no-cache")
 
-createFolderHandler :: CodeWorldHandler
-createFolderHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just path <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "path"
-  let pathText = map T.pack path
-      dirIds = map nameToDirId pathText
-      finalDir = joinPath $ map dirBase dirIds
-      name = last pathText
-  liftIO $ ensureUserBaseDir mode userId finalDir
-  liftIO $ createDirectory $ userProjectDir mode userId </> finalDir
-  modifyResponse $ setContentType "text/plain"
-  liftIO $
-    T.writeFile
-      (userProjectDir mode userId </> finalDir </> "dir.info")
-      name
-
-deleteFolderHandler :: CodeWorldHandler
-deleteFolderHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just path <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "path"
-  let dirIds = map (nameToDirId . T.pack) path
-  let finalDir = joinPath $ map dirBase dirIds
-  liftIO $ ensureUserDir mode userId finalDir
-  let dir = userProjectDir mode userId </> finalDir
-  liftIO $ removeDirectoryIfExists dir
-
-loadProjectHandler :: CodeWorldHandler
-loadProjectHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just name <- getParam "name"
-  let projectName = T.decodeUtf8 name
-  let projectId = nameToProjectId projectName
-  Just path <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "path"
-  let dirIds = map (nameToDirId . T.pack) path
-  let finalDir = joinPath $ map dirBase dirIds
-  liftIO $ ensureProjectDir mode userId finalDir projectId
-  let file =
-        userProjectDir mode userId </> finalDir
-          </> projectFile projectId
-  modifyResponse $ setContentType "application/json"
-  serveFile file
-
-saveProjectHandler :: CodeWorldHandler
-saveProjectHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just path <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "path"
-  let dirIds = map (nameToDirId . T.pack) path
-  let finalDir = joinPath $ map dirBase dirIds
-  Just project <- decode . LB.fromStrict . fromJust <$> getParam "project"
-  let projectId = nameToProjectId (projectName project)
-  liftIO $ ensureProjectDir mode userId finalDir projectId
-  let file =
-        userProjectDir mode userId </> finalDir
-          </> projectFile projectId
-  liftIO $ LB.writeFile file $ encode project
-
-deleteProjectHandler :: CodeWorldHandler
-deleteProjectHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just name <- getParam "name"
-  let projectName = T.decodeUtf8 name
-  let projectId = nameToProjectId projectName
-  Just path <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "path"
-  let dirIds = map (nameToDirId . T.pack) path
-  let finalDir = joinPath $ map dirBase dirIds
-  liftIO $ ensureProjectDir mode userId finalDir projectId
-  let file =
-        userProjectDir mode userId </> finalDir
-          </> projectFile projectId
-  liftIO $ removeFileIfExists file
-
-listFolderHandler :: Bool -> CodeWorldHandler
-listFolderHandler recurse = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just path <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "path"
-  let dirIds = map (nameToDirId . T.pack) path
-  let finalDir = joinPath $ map dirBase dirIds
-  liftIO $ ensureUserBaseDir mode userId finalDir
-  liftIO $ ensureUserDir mode userId finalDir
-  let projectDir = userProjectDir mode userId
-  entries <- liftIO $ fsEntries recurse (projectDir </> finalDir)
-  modifyResponse $ setContentType "application/json"
-  writeLBS (encode entries)
-
--- | Update order of elements inside of given directory
-updateChildrenIndexesHandler :: CodeWorldHandler
-updateChildrenIndexesHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  let projectDir = userProjectDir mode userId
-  Just path <-
-    fmap
-      ( (\p -> projectDir </> p </> "order.info")
-          . joinPath
-          . (map (dirBase . nameToDirId . T.pack))
-          . splitDirectories
-          . T.unpack
-          . T.decodeUtf8
-      )
-      <$> getParam "path"
-  param <- getParam "entries"
-  -- Encoding just to check if request param is correct
-  Just entries <- decodeStrict . fromJust <$> getParam "entries" :: Snap (Maybe [FileSystemEntry])
-  liftIO $ LB.writeFile path $ encode entries
-
-shareFolderHandler :: CodeWorldHandler
-shareFolderHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just path <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "path"
-  let dirIds = map (nameToDirId . T.pack) path
-  let finalDir = joinPath $ map dirBase dirIds
-  checkSum <-
-    liftIO $ dirToCheckSum $ userProjectDir mode userId </> finalDir
-  liftIO $ ensureShareDir mode $ ShareId checkSum
-  liftIO
-    $ B.writeFile (shareRootDir mode </> shareLink (ShareId checkSum))
-    $ T.encodeUtf8 (T.pack (userProjectDir mode userId </> finalDir))
-  modifyResponse $ setContentType "text/plain"
-  writeBS $ T.encodeUtf8 checkSum
-
-shareContentHandler :: CodeWorldHandler
-shareContentHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just shash <- getParam "shash"
-  sharingFolder <-
-    liftIO $
-      B.readFile
-        (shareRootDir mode </> shareLink (ShareId $ T.decodeUtf8 shash))
-  Just name <- fmap T.decodeUtf8 <$> getParam "name"
-  let dirPath = dirBase $ nameToDirId name
-  liftIO $ ensureUserBaseDir mode userId dirPath
-  liftIO
-    $ copyDirIfExists (T.unpack (T.decodeUtf8 sharingFolder))
-    $ userProjectDir mode userId </> dirPath
-  liftIO $
-    T.writeFile
-      (userProjectDir mode userId </> dirPath </> "dir.info")
-      name
-
-moveProjectHandler :: CodeWorldHandler
-moveProjectHandler = private $ \userId ctx -> do
-  mode <- getBuildMode
-  Just moveTo <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "moveTo"
-  let moveToDir = joinPath $ map (dirBase . nameToDirId . T.pack) moveTo
-  Just moveFrom <- fmap (splitDirectories . T.unpack . T.decodeUtf8) <$> getParam "moveFrom"
-  let projectDir = userProjectDir mode userId
-  let moveFromDir =
-        projectDir
-          </> joinPath (map (dirBase . nameToDirId . T.pack) moveFrom)
-  let parentFrom =
-        if moveFrom == []
-          then []
-          else init moveFrom
-  Just isFile <- getParam "isFile"
-  case (moveTo == moveFrom, moveTo == parentFrom, isFile) of
-    (False, _, "true") -> do
-      Just name <- getParam "name"
-      let projectId = nameToProjectId $ T.decodeUtf8 name
-          file = moveFromDir </> projectFile projectId
-          toFile = projectDir </> moveToDir </> projectFile projectId
-      liftIO $ ensureProjectDir mode userId moveToDir projectId
-      liftIO $ copyFile file toFile
-      liftIO $ removeFileIfExists file
-    (_, False, "false") -> do
-      let dirName = last $ splitDirectories moveFromDir
-      let dir = moveToDir </> dirName
-      liftIO $ ensureUserBaseDir mode userId dir
-      liftIO $ copyDirIfExists moveFromDir $ projectDir </> dir
-      liftIO $ removeDirectoryIfExists moveFromDir
-    (_, _, _) -> return ()
-
 withProgramLock :: BuildMode -> ProgramId -> IO a -> IO a
 withProgramLock (BuildMode mode) (ProgramId hash) action = do
   tmpDir <- getTemporaryDirectory
   let tmpFile = tmpDir </> "codeworld" <.> T.unpack hash <.> mode
   withFileLock tmpFile Exclusive (const action)
-
-saveXMLHashHandler :: CodeWorldHandler
-saveXMLHashHandler = public $ \ctx -> do
-  mode <- getBuildMode
-  unless (mode == BuildMode "blocklyXML")
-    $ modifyResponse
-    $ setResponseCode 500
-  Just source <- getParam "source"
-  let programId = sourceToProgramId source
-  liftIO $ withProgramLock mode programId $ do
-    ensureSourceDir mode programId
-    B.writeFile (sourceRootDir mode </> sourceXML programId) source
-  modifyResponse $ setContentType "text/plain"
-  writeBS (T.encodeUtf8 (unProgramId programId))
 
 compileHandler :: CodeWorldHandler
 compileHandler = public $ \ctx -> do
@@ -429,16 +227,6 @@ getHashParam allowDeploy mode = do
         let deployId = DeployId (T.decodeUtf8 dh)
         liftIO $ resolveDeployId mode deployId
       | otherwise -> pass
-
-loadXMLHandler :: CodeWorldHandler
-loadXMLHandler = public $ \ctx -> do
-  mode <- getBuildMode
-  unless (mode == BuildMode "blocklyXML")
-    $ modifyResponse
-    $ setResponseCode 500
-  programId <- getHashParam False mode
-  modifyResponse $ setContentType "text/plain"
-  serveFile (sourceRootDir mode </> sourceXML programId)
 
 loadSourceHandler :: CodeWorldHandler
 loadSourceHandler = public $ \ctx -> do
@@ -527,46 +315,6 @@ indentHandler = public $ \ctx -> do
     handleError (e :: OrmoluException) = do
       modifyResponse $ setResponseCode 500 . setContentType "text/plain"
       writeLBS $ LB.fromStrict $ T.encodeUtf8 $ T.pack (show e)
-
-galleryHandler :: CodeWorldHandler
-galleryHandler = public $ const $ do
-  mode <- getBuildMode
-  Just shareHash <- getParam "shareHash"
-  let shareId = ShareId (T.decodeUtf8 shareHash)
-  gallery <- liftIO $ do
-    folder <- T.unpack . T.decodeUtf8 <$> B.readFile (shareRootDir mode </> shareLink shareId)
-    files <- sort <$> projectFileNames folder
-    Gallery <$> mapM (galleryItemFromProject mode folder) files
-  writeLBS $ encode gallery
-
-galleryItemFromProject :: BuildMode -> FilePath -> Text -> IO GalleryItem
-galleryItemFromProject mode@(BuildMode modeName) folder name = do
-  let projectId = nameToProjectId name
-  let file = folder </> projectFile projectId
-  Just project <- decode <$> LB.readFile file
-
-  let source = T.encodeUtf8 $ projectSource project
-  let programId = sourceToProgramId source
-  let deployId = sourceToDeployId source
-
-  liftIO $ withProgramLock mode programId $ do
-    ensureSourceDir mode programId
-    B.writeFile (sourceRootDir mode </> sourceFile programId) source
-    writeDeployLink mode deployId programId
-
-  let baseURL = "/" <> if modeName == "codeworld" then "" else T.pack modeName
-
-  return
-    GalleryItem
-      { galleryItemName = name,
-        galleryItemURL =
-          "run.html"
-            <> "?mode="
-            <> T.pack modeName
-            <> "&dhash="
-            <> unDeployId deployId,
-        galleryItemCode = Just (baseURL <> "#" <> unProgramId programId)
-      }
 
 logHandler :: CodeWorldHandler
 logHandler = public $ \ctx -> do
