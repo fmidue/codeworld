@@ -132,35 +132,6 @@ window.onscroll = (event) => {
     }
   }
 
-  function linkFunBlocks(elem) {
-    let blocks = elem.getElementsByTagName('xml');
-
-    while (blocks !== null && blocks.length > 0) {
-      const block = blocks[0];
-      const text = block.outerHTML;
-
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('frameborder', '0');
-      iframe.setAttribute('scrolling', 'no');
-
-      $(iframe).on('load', (e) => {
-        const currentTarget = e.currentTarget;
-        const contentWindow = currentTarget.contentWindow;
-
-        contentWindow.setId(iframe);
-        contentWindow.loadXml.call(iframe.contentWindow, text);
-      });
-
-      iframe.src = 'blockframe.html';
-      iframe.classList.add('clickable');
-
-      const parent = block.parentNode;
-      parent.insertBefore(iframe, block);
-      parent.removeChild(block);
-
-      blocks = elem.getElementsByTagName('xml');
-    }
-  }
 
   function addTableOfContents(body, outline) {
     const contents = document.createElement('div');
@@ -302,7 +273,6 @@ window.onscroll = (event) => {
           relativizeLinks(source, content, 'img', 'src');
           relativizeLinks(source, content, 'a', 'href');
           if (shelf && shelf.blocks) {
-            linkFunBlocks(content);
             linkCodeBlocks(content, false);
             activateCollapsible(content);
           } else {
