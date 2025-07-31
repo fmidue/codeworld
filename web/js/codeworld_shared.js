@@ -1485,82 +1485,9 @@ function printMessage(type, message) {
     }
   }
 
-  /*
-  if (type === 'error' || type === 'warning') {
-    if (!window.alreadyReportedErrors.has(scrubError(message))) {
-      const $reportLink = $('<a>');
-      $reportLink.attr('href', '#');
-      $reportLink.addClass('report-unhelpful');
-      $reportLink.on('click', (event) =>
-        sendUnhelpfulReport(event, message, $reportLink)
-      );
-      $reportLink.text('Not helpful?');
-
-      const $lastOutputBlockMessageContent = $outputBlock
-        .children()
-        .last()
-        .find('.message-content');
-
-      if ($lastOutputBlockMessageContent.children().length) {
-        $lastOutputBlockMessageContent
-          .find('.message-summary')
-          .append($reportLink);
-      } else {
-        $lastOutputBlockMessageContent.append($reportLink);
-      }
-    }
-  }
-  */
 
   $outputBlock.scrollTop($outputBlock.prop('scrollHeight'));
 }
-/*
-function sendUnhelpfulReport(event, message, $reportLink) {
-  if (window.alreadyReportedErrors.has(scrubError(message))) {
-    sweetAlert({
-      type: 'info',
-      text:
-        'You have already reported this message.  Thank you for your feedback.',
-    });
-    $reportLink.hide();
-    return;
-  }
-  sweetAlert({
-    title: Alert.title('Report unhelpful message:', 'mdi-flag-variant'),
-    text: 'The report will include your code.',
-    input: 'textarea',
-    inputPlaceholder: 'Anything else to add?',
-    showConfirmButton: true,
-    showCancelButton: true,
-  }).then((result) => {
-    if (!result || result.dismiss !== sweetAlert.DismissReason.confirm) return;
-
-    const data = new FormData();
-    data.append('title', 'User-reported unhelpful error message');
-    data.append('label', 'error-message');
-
-    let report = `**Program:** ${window.location.href}`;
-    if (result.value) report += `\n\n**Comment:**\n\n${result.value}`;
-    report += `\n\n**Message:**\n\n${message.replace(/^/gm, '    ')}`;
-    data.append('message', report);
-    sendHttp('POST', 'log', data);
-    sweetAlert({
-      type: 'success',
-      text: 'Thank you for your feedback.',
-    });
-
-    $reportLink.hide();
-    window.alreadyReportedErrors.add(scrubError(message));
-  });
-  event.preventDefault();
-}
-
-function scrubError(msg) {
-  return msg
-    .replace(/[a-zA-Z0-9_-]+\.hs:(\d+):((\d+)(-\d+)?)/g, '(loc)')
-    .replace(/[a-zA-Z0-9_-]+\.hs:\((\d+),(\d+)\)-\((\d+),(\d+)\)/g, '(loc)');
-}
-*/
 
 function clearMessages() {
   const outputDiv = document.getElementById('message');
@@ -1802,27 +1729,6 @@ function initDirectoryTree(isEditorClean, loadProjectHandler, clearEditor) {
     });
   });
   $('#directoryTree').on('tree.select', (event) => {
-    const selectedNode = DirTree.getSelectedNode();
-
-    // const $deleteButton = $('#deleteButton');
-    // const $saveButton = $('#saveButton');
-    // const $downloadButton = $('#downloadButton');
-    // const $shareFolderButton = $('#shareFolderButton');
-
-    // $deleteButton.show();
-
-    // if (DirTree.isProject(selectedNode)) {
-    //   $saveButton.show();
-    //   $downloadButton.show();
-
-    //   $shareFolderButton.hide();
-    // } else {
-    //   $saveButton.hide();
-    //   $downloadButton.hide();
-
-    //   $shareFolderButton.show();
-    // }
-
     updateDocumentTitle();
   });
 }

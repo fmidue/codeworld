@@ -302,16 +302,6 @@ async function init() {
       hash = hash.slice(0, -2);
     }
     if (hash[0] === 'P') {
-      /*sendHttp(
-        'GET',
-        `loadSource?hash=${hash}&mode=${window.buildMode}`,
-        null,
-        (request) => {
-          if (request.status === 200) {
-            setCode(request.responseText, null, true);
-          }
-        }
-      );*/
       setCode(localStorage.getItem(`${window.buildMode}-${hash}`) || '');
     } else if (hash[0] !== 'F') {
       setCode('');
@@ -1268,30 +1258,6 @@ function compile() {
     } else {
       sweetAlert.close();
     }
-
-	  /*
-    const data = new FormData();
-    data.append('hash', hash);
-    data.append('mode', window.buildMode);
-
-    sendHttp('POST', 'runMsg', data, (request) => {
-      const { status, responseText } = request;
-      let msg = '';
-
-      if (status === 200) {
-        msg = responseText.replace(/^[\r\n]+|[\r\n]+$/g, '');
-      } else if (status >= 400) {
-        msg = 'Sorry!  Your program couldn\'t be run right now.';
-      }
-      if (msg !== '') msg += '\n\n';
-
-      if (success) {
-        run(hash, dhash, msg, false, compileGeneration);
-      } else {
-        sweetAlert.close();
-        run(hash, '', msg, true, compileGeneration);
-      }
-    });*/
   });
 }
 
