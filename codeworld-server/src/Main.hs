@@ -130,14 +130,9 @@ site ctx =
         [ 
           ("compile", compileHandler ctx),
           ("errorCheck", errorCheckHandler ctx),
-          ("loadSource", loadSourceHandler ctx),
-          ("run", runHandler ctx),
-          ("runJS", runHandler ctx),
           ("runBaseJS", runBaseHandler ctx),
-          ("runMsg", runMessageHandler ctx),
           ("haskell", serveEditor ctx),
-          ("indent", indentHandler ctx),
-          ("log", logHandler ctx)
+          ("indent", indentHandler ctx)
         ]
    in route routes <|> serveDirectory "web"
 
@@ -207,26 +202,6 @@ getHashParam allowDeploy mode = do
         liftIO $ resolveDeployId mode deployId
       | otherwise -> pass
 
-loadSourceHandler :: CodeWorldHandler
-loadSourceHandler ctx = do
-  mode <- getBuildMode
-  programId <- getHashParam False mode
-  modifyResponse $ setContentType "text/x-haskell"
-  serveFile (sourceRootDir mode </> sourceFile programId)
-
-runHandler :: CodeWorldHandler
-runHandler ctx = do
-  mode <- getBuildMode
-  programId <- getHashParam True mode
-  result <-
-    liftIO
-      $ withProgramLock mode programId
-      $ compileIfNeeded ctx mode programId
-  modifyResponse $ setResponseCode (responseCodeFromCompileStatus result)
-  when (result == CompileSuccess) $ do
-    modifyResponse $ setContentType "text/javascript"
-    serveFile (buildRootDir mode </> targetFile programId)
-
 runBaseHandler :: CodeWorldHandler
 runBaseHandler ctx = do
   maybeVer <- fmap T.decodeUtf8 <$> getParam "version"
@@ -255,13 +230,6 @@ runBaseHandler ctx = do
   where
     impliedVersion ver = redirect $ "/runBaseJS?version=" <> ver
     hasParam name = (/= Nothing) <$> getParam name
-
-runMessageHandler :: CodeWorldHandler
-runMessageHandler ctx = do
-  mode <- getBuildMode
-  programId <- getHashParam False mode
-  modifyResponse $ setContentType "text/plain"
-  serveFile (buildRootDir mode </> resultFile programId)
 
 escapeCode :: String -> String
 escapeCode input = foldr
@@ -294,33 +262,6 @@ indentHandler ctx = do
     handleError (e :: OrmoluException) = do
       modifyResponse $ setResponseCode 500 . setContentType "text/plain"
       writeLBS $ LB.fromStrict $ T.encodeUtf8 $ T.pack (show e)
-
-logHandler :: CodeWorldHandler
-logHandler ctx = do
-  Just message <- fmap T.decodeUtf8 <$> getParam "message"
-  title <-
-    fromMaybe "User-reported unhelpful error message"
-      <$> fmap T.decodeUtf8
-      <$> getParam "title"
-  tag <- fromMaybe "error-message" <$> fmap T.decodeUtf8 <$> getParam "tag"
-
-  liftIO $ do
-    let body =
-          object
-            [ ("title", String title),
-              ("body", String message),
-              ("labels", toJSON [tag])
-            ]
-    authToken <- B.readFile "github-auth-token.txt"
-    let authHeader = "token " <> authToken
-    let userAgent = "https://code.world github integration by cdsmith"
-    request <-
-      addRequestHeader "Authorization" authHeader
-        <$> addRequestHeader "User-agent" userAgent
-        <$> setRequestBodyJSON body
-        <$> parseRequestThrow "POST https://api.github.com/repos/google/codeworld/issues"
-    httpNoBody request
-  return ()
 
 responseCodeFromCompileStatus :: CompileStatus -> Int
 responseCodeFromCompileStatus CompileSuccess = 200
