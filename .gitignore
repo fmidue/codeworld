@@ -30,7 +30,6 @@ cabal.project.local
 .cache/
 
 web/SourceCodePro
-web/blockly
 web/codeworld-base.txt
 web/css/ambiance.css
 web/css/codemirror.css
@@ -42,10 +41,6 @@ web/gallery-icfp17.html
 web/help/ims
 web/ims
 web/index.html
-web/js/blocks_lib.js
-web/js/blocks_out.js
-web/js/blocks_rts.js
-web/js/blocks_runmain.js
 web/js/codemirror-buttons/buttons.js
 web/js/codemirror-compressed.js
 web/js/details-element-polyfill.js
