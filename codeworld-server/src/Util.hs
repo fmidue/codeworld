@@ -78,21 +78,6 @@ clientIdPath = "web/clientId.txt"
 baseRootDir :: FilePath
 baseRootDir = "data/base"
 
-sourceRootDir :: BuildMode -> FilePath
-sourceRootDir (BuildMode m) = "data" </> m </> "user"
-
-buildRootDir :: BuildMode -> FilePath
-buildRootDir (BuildMode m) = "data" </> m </> "build"
-
-shareRootDir :: BuildMode -> FilePath
-shareRootDir (BuildMode m) = "data" </> m </> "share"
-
-projectRootDir :: BuildMode -> FilePath
-projectRootDir (BuildMode m) = "data" </> m </> "projects"
-
-deployRootDir :: BuildMode -> FilePath
-deployRootDir (BuildMode m) = "data" </> m </> "deploy"
-
 baseCodeFile :: BaseVersion -> FilePath
 baseCodeFile ver = baseRootDir </> T.unpack ver </> "base.js"
 
@@ -100,9 +85,7 @@ baseSymbolFile :: BaseVersion -> FilePath
 baseSymbolFile ver = baseRootDir </> T.unpack ver </> "base.symbs"
 
 sourceBase :: ProgramId -> FilePath
-sourceBase (ProgramId p) =
-  let s = T.unpack p
-   in take 3 s </> s
+sourceBase (ProgramId p) = T.unpack p
 
 sourceFile :: ProgramId -> FilePath
 sourceFile programId = sourceBase programId <.> "hs"
@@ -166,16 +149,6 @@ dirBase (DirId d) = T.unpack d
 
 nameToDirId :: Text -> DirId
 nameToDirId = DirId . hashToId "D" . T.encodeUtf8
-
-ensureSourceDir :: BuildMode -> ProgramId -> IO ()
-ensureSourceDir mode (ProgramId p) = createDirectoryIfMissing True dir
-  where
-    dir = sourceRootDir mode </> take 3 (T.unpack p)
-
-ensureShareDir :: BuildMode -> ShareId -> IO ()
-ensureShareDir mode (ShareId s) = createDirectoryIfMissing True dir
-  where
-    dir = shareRootDir mode </> take 3 (T.unpack s)
 
 listDirectoryWithPrefix :: FilePath -> IO [FilePath]
 listDirectoryWithPrefix filePath = map (filePath </>) <$> listDirectory filePath
@@ -253,17 +226,6 @@ projectDirNames dir = do
   dirNames <- mapM (\x -> T.readFile $ x </> "dir.info") hashedDirs
   return dirNames
 
-writeDeployLink :: BuildMode -> DeployId -> ProgramId -> IO ()
-writeDeployLink mode deployId (ProgramId p) = do
-  createDirectoryIfMissing True (dropFileName f)
-  B.writeFile f (T.encodeUtf8 p)
-  where
-    f = deployRootDir mode </> deployLink deployId
-
-resolveDeployId :: BuildMode -> DeployId -> IO ProgramId
-resolveDeployId mode deployId = ProgramId . T.decodeUtf8 <$> B.readFile f
-  where
-    f = deployRootDir mode </> deployLink deployId
 
 isDir :: FilePath -> IO Bool
 isDir path = do

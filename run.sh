@@ -26,11 +26,6 @@ rm -rf $(for fn in $(find data/base -atime +20 -regex .*\\.js$ ); do dirname $fn
 
 fuser -k -n tcp "${PORT}"
 
-# Run migration of project directory structure for codeworld-server.
-mkdir -p data/codeworld/projects
-mkdir -p data/haskell/projects
-mkdir -p data/blocklyXML/projects
-
 mkdir -p log
 
 run . ./build/bin/codeworld-server -p $PORT --no-access-log

@@ -155,31 +155,37 @@ compileHandler ctx = do
   Just source <- getParam "source"
   let programId = sourceToProgramId source
       deployId = sourceToDeployId source
-  status <- liftIO $ withProgramLock mode programId $ do
-    ensureSourceDir mode programId
-    B.writeFile (sourceRootDir mode </> sourceFile programId) source
-    writeDeployLink mode deployId programId
-    compileIfNeeded ctx mode programId
-  modifyResponse $ setResponseCode (responseCodeFromCompileStatus status)
+      id = unProgramId programId
+      did = unDeployId deployId
+
+  (compileStatus, responseBody) <- liftIO $ withSystemTempDirectory "codeworld" $ \tempDir -> do
+    let sourceDir = tempDir </> "source"
+        buildDir = tempDir </> "build"
+    createDirectoryIfMissing True sourceDir
+    createDirectoryIfMissing True buildDir
+
+    status <- withProgramLock mode programId $ do
+      B.writeFile (sourceDir </> sourceFile programId) source
+      compileIfNeeded ctx tempDir mode programId
+
+    hasResultFile <- doesFileExist (buildDir </> resultFile programId)
+
+    resBody <- case status of
+      CompileSuccess | hasResultFile -> do
+        content <- readFile (buildDir </> resultFile programId)
+        target <- readFile (buildDir </> targetFile programId)
+        pure $ T.intercalate "\n=======================\n" [id,did,T.pack content,T.pack target]
+      _ | hasResultFile -> do
+        content <- readFile (buildDir </> resultFile programId)
+        pure $ T.intercalate "\n=======================\n" [id,did,T.pack content]
+      _ -> pure "Something went wrong"
+      
+    pure (status, resBody)
+    
+
+  modifyResponse $ setResponseCode (responseCodeFromCompileStatus compileStatus)
   modifyResponse $ setContentType "text/plain"
-  let id = unProgramId programId
-  let did = unDeployId deployId
-  hasResultFile <- liftIO $ doesFileExist (buildRootDir mode </> resultFile programId)
-  when (status == CompileSuccess && hasResultFile) $ do
-    content <- liftIO $ readFile (buildRootDir mode </> resultFile programId)
-    target <- liftIO $ readFile (buildRootDir mode </> targetFile programId)
-    let body = T.intercalate "\n=======================\n" [id,did,T.pack content,T.pack target]
-    writeBS $ T.encodeUtf8 body
-  when (status /= CompileSuccess && hasResultFile) $ do
-    content <- liftIO $ readFile (buildRootDir mode </> resultFile programId)
-    let body = T.intercalate "\n=======================\n" [id,did,T.pack content]
-    writeBS $ T.encodeUtf8 body
-  unless (hasResultFile) $ do
-    writeBS $ T.encodeUtf8 "Something went wrong"
-  liftIO $ removeDirectoryIfExists (sourceRootDir mode)
-  liftIO $ removeDirectoryIfExists (buildRootDir mode)
-  liftIO $ removeDirectoryIfExists (projectRootDir mode)
-  liftIO $ removeDirectoryIfExists (deployRootDir mode)
+  writeBS $ T.encodeUtf8 responseBody
 
 errorCheckHandler :: CodeWorldHandler
 errorCheckHandler ctx = do
@@ -195,12 +201,7 @@ getHashParam allowDeploy mode = do
   maybeHash <- getParam "hash"
   case maybeHash of
     Just h -> return (ProgramId (T.decodeUtf8 h))
-    Nothing
-      | allowDeploy -> do
-        Just dh <- getParam "dhash"
-        let deployId = DeployId (T.decodeUtf8 dh)
-        liftIO $ resolveDeployId mode deployId
-      | otherwise -> pass
+    Nothing -> pass
 
 runBaseHandler :: CodeWorldHandler
 runBaseHandler ctx = do
@@ -210,25 +211,11 @@ runBaseHandler ctx = do
       <$> hasParam "mode" <*> hasParam "hash" <*> hasParam "dhash"
   case maybeVer of
     Just ver -> serveFile (baseCodeFile ver)
-    Nothing | hasProgram -> do
-      mode <- getBuildMode
-      programId <- getHashParam True mode
-      result <-
-        liftIO
-          $ withProgramLock mode programId
-          $ compileIfNeeded ctx mode programId
-      modifyResponse $ setResponseCode (responseCodeFromCompileStatus result)
-      when (result == CompileSuccess) $ do
-        ver <-
-          liftIO $
-            B.readFile (buildRootDir mode </> baseVersionFile programId)
-        impliedVersion ver
-    _ -> do
+    Nothing -> do
       ver <- liftIO baseVersion
       liftIO $ buildBaseIfNeeded ctx ver
-      impliedVersion (T.encodeUtf8 ver)
+      serveFile (baseCodeFile ver)
   where
-    impliedVersion ver = redirect $ "/runBaseJS?version=" <> ver
     hasParam name = (/= Nothing) <$> getParam name
 
 escapeCode :: String -> String
@@ -268,57 +255,58 @@ responseCodeFromCompileStatus CompileSuccess = 200
 responseCodeFromCompileStatus CompileError = 400
 responseCodeFromCompileStatus CompileAborted = 503
 
-compileIfNeeded :: Context -> BuildMode -> ProgramId -> IO CompileStatus
-compileIfNeeded ctx mode programId = do
-  hasResult <- doesFileExist (buildRootDir mode </> resultFile programId)
-  hasTarget <- doesFileExist (buildRootDir mode </> targetFile programId)
+compileIfNeeded :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
+compileIfNeeded ctx basePath mode programId = do
+  hasResult <- doesFileExist (basePath </> "build" </> resultFile programId)
+  hasTarget <- doesFileExist (basePath </> "build" </> targetFile programId)
   if
       | hasResult && hasTarget -> return CompileSuccess
       | hasResult -> return CompileError
       | otherwise ->
-        MSem.with (compileSem ctx) $ compileProgram ctx mode programId
+        MSem.with (compileSem ctx) $ compileProgram ctx basePath mode programId
 
-compileProgram :: Context -> BuildMode -> ProgramId -> IO CompileStatus
-compileProgram ctx mode programId = do
+compileProgram :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
+compileProgram ctx basePath mode programId = do
   ver <- baseVersion
   baseStatus <- buildBaseIfNeeded ctx ver
 
   case baseStatus of
     CompileSuccess -> do
-      status <- compileIncrementally mode programId ver
-      T.writeFile (buildRootDir mode </> baseVersionFile programId) ver
+      status <- compileIncrementally basePath mode programId ver
+      T.writeFile (basePath </> "build" </> baseVersionFile programId) ver
 
       -- It's possible that a new library was built during the compile.  If so, then the code
       -- we've just built is suspect, and it's better to just build it anew!
       checkVer <- baseVersion
       if ver == checkVer
         then return status
-        else compileProgram ctx mode programId
+        else compileProgram ctx basePath mode programId
     _ -> return CompileAborted
 
-compileIncrementally :: BuildMode -> ProgramId -> Text -> IO CompileStatus
-compileIncrementally mode programId ver =
-  compileSource stage source (projectModuleFinder mode) result (getMode mode) False
+compileIncrementally :: FilePath -> BuildMode -> ProgramId -> Text -> IO CompileStatus
+compileIncrementally basePath mode programId ver =
+  compileSource stage source (projectModuleFinder (Just sourceDir) mode) result (getMode mode) False
   where
-    source = sourceRootDir mode </> sourceFile programId
-    target = buildRootDir mode </> targetFile programId
-    result = buildRootDir mode </> resultFile programId
+    sourceDir = basePath </> "source"
+    source = sourceDir </> sourceFile programId
+    target = basePath </> "build" </> targetFile programId
+    result = basePath </> "build" </> resultFile programId
     baseURL = "runBaseJS?version=" ++ T.unpack ver
     stage = UseBase target (baseSymbolFile ver) baseURL
 
-projectModuleFinder :: BuildMode -> String -> IO (Maybe FilePath)
-projectModuleFinder mode modName
+projectModuleFinder :: Maybe FilePath -> BuildMode -> String -> IO (Maybe FilePath)
+projectModuleFinder mSourceDir mode modName
   | length modName /= 23 || '.' `elem` modName = return Nothing
   | "P" `isPrefixOf` modName = go (ProgramId (T.pack modName))
-  | "D" `isPrefixOf` modName = do
-    let deployId = DeployId (T.pack modName)
-    resolveDeployId mode deployId >>= go
   | otherwise = return Nothing
   where
     go programId = do
-      let path = sourceRootDir mode </> sourceFile programId
-      exists <- doesFileExist path
-      if exists then return (Just path) else return Nothing
+      case mSourceDir of
+        Nothing -> return Nothing
+        Just sourceDir -> do 
+          let path = sourceDir </> sourceFile programId
+          exists <- doesFileExist path
+          if exists then return (Just path) else return Nothing
 
 noModuleFinder :: String -> IO (Maybe FilePath)
 noModuleFinder _ = return Nothing
@@ -350,7 +338,7 @@ errorCheck ctx mode source = withSystemTempDirectory "cw_errorCheck" $ \dir -> d
   B.writeFile srcFile source
   status <-
     MSem.with (errorSem ctx) $ MSem.with (compileSem ctx) $
-      compileSource ErrorCheck srcFile (projectModuleFinder mode) errFile (getMode mode) False
+      compileSource ErrorCheck srcFile (projectModuleFinder Nothing mode) errFile (getMode mode) False
   hasOutput <- doesFileExist errFile
   output <- if hasOutput then B.readFile errFile else return B.empty
   return (status, output)
