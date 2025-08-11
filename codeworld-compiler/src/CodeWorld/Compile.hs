@@ -148,7 +148,6 @@ build = do
   ifSucceeding checkCodeConventions
   ifSucceeding processObfuscation
   ifSucceeding compileCode
-  ifSucceeding checkRequirements
   errPath <- gets compileOutputPath
   liftIO $ createDirectoryIfMissing True (takeDirectory errPath)
   diags <- formatDiagnostics

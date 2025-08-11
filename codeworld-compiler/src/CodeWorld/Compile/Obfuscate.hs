@@ -22,9 +22,6 @@
 module CodeWorld.Compile.Obfuscate (processObfuscation) where
 
 import CodeWorld.Compile.Framework
-import CodeWorld.Compile.Requirements.Eval
-import CodeWorld.Compile.Requirements.Language
-import CodeWorld.Compile.Requirements.Types
 import Codec.Compression.Zlib
 import Control.Exception
 import Control.Monad
