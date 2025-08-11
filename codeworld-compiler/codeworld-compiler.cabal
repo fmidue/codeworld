@@ -33,6 +33,7 @@ Library
 
   Other-modules:
     CodeWorld.Compile.Framework
+    CodeWorld.Compile.Obfuscate
     CodeWorld.Compile.Requirements
     CodeWorld.Compile.Requirements.Eval
     CodeWorld.Compile.Requirements.Language
