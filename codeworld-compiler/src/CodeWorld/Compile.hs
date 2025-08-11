@@ -146,6 +146,7 @@ build = do
   findAllModules
   checkDangerousSource
   ifSucceeding checkCodeConventions
+  ifSucceeding processObfuscation
   ifSucceeding compileCode
   ifSucceeding checkRequirements
   errPath <- gets compileOutputPath

@@ -194,7 +194,9 @@ errorCheckHandler ctx = do
   (status, output) <- liftIO $ errorCheck ctx mode source
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus status)
   modifyResponse $ setContentType "text/plain"
-  writeBS output
+  case status of
+    CompileSuccess -> writeBS ""
+    _ -> writeBS output
 
 getHashParam :: Bool -> BuildMode -> Snap ProgramId
 getHashParam allowDeploy mode = do
