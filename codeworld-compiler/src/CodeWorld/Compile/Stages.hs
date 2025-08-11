@@ -28,14 +28,12 @@ module CodeWorld.Compile.Stages
     getExtraPkgs,
     checkDangerousSource,
     checkCodeConventions,
-    checkRequirements,
     processObfuscation
   )
 where
 
 import qualified "ghc" BasicTypes as GHC
 import CodeWorld.Compile.Framework
-import CodeWorld.Compile.Requirements
 import CodeWorld.Compile.Obfuscate
 import Control.Monad
 import Control.Monad.State

@@ -34,12 +34,6 @@ Library
   Other-modules:
     CodeWorld.Compile.Framework
     CodeWorld.Compile.Obfuscate
-    CodeWorld.Compile.Requirements
-    CodeWorld.Compile.Requirements.Eval
-    CodeWorld.Compile.Requirements.Language
-    CodeWorld.Compile.Requirements.LegacyLanguage
-    CodeWorld.Compile.Requirements.Matcher
-    CodeWorld.Compile.Requirements.Types
     CodeWorld.Compile.Stages
 
   Build-depends:
