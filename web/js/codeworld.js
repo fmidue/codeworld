@@ -1033,13 +1033,7 @@ window.addEventListener('message', (event) => {
     loadSample(isEditorClean, setCode, data.code);
     break;
   case 'programStarted':
-    if (window.lastRunMessage) {
-      const msg = window.lastRunMessage;
-      window.lastRunMessage = null;
-      setTimeout(() => {
-        showRequiredChecksInDialog(msg);
-      }, 500);
-    }
+    window.lastRunMessage = null;
 
     sweetAlert.close();
     break;
@@ -1102,69 +1096,6 @@ function inspect() {
   }
 }
 
-function showRequiredChecksInDialog(msg) {
-  const outputDiv = document.getElementById('message');
-  if (outputDiv.classList.contains('error')) return;
-  const matches = msg.match(
-    /:: REQUIREMENTS ::((?:.|[\r\n])*):: END REQUIREMENTS ::/
-  );
-  if (!matches) {
-    return;
-  }
-  const reqs = matches[1].split(/[\r\n]+/);
-  const items = [];
-  for (let i = 0; i < reqs.length; ++i) {
-    const req = reqs[i];
-    if (!req) continue;
-    const bullet = req.slice(0, 4).toUpperCase();
-    const rest = req.slice(4);
-    if (bullet === '[Y] ') {
-      // Successful requirement
-      items.push([true, htmlEscapeString(rest)]);
-    } else if (bullet === '[N] ') {
-      // Unsuccessful requirement
-      items.push([false, htmlEscapeString(rest)]);
-    } else if (bullet === '[?] ') {
-      // Indeterminate (usually a parse error in the requirement)
-      items.push([undefined, htmlEscapeString(rest)]);
-    } else if (items.length > 0) {
-      // Detail message for the previous requirement.
-      items[items.length - 1].push(req);
-    }
-  }
-  const itemsHtml = items.map((item) => {
-    const head = item[1];
-    const rest = item.slice(2).join('<br>');
-    const details = rest ? `<br><span class="req-details">${rest}</span>` : '';
-    const itemclass =
-      item[0] === undefined ? 'req-indet' : item[0] ? 'req-yes' : 'req-no';
-    return `<li class="${itemclass}">${head}${details}</li>`;
-  });
-  sweetAlert({
-    title: Alert.title('Requirements'),
-    html: `<ul class="req-list">${itemsHtml.join('')}</ul>`,
-    confirmButtonText: 'Dismiss',
-    showCancelButton: false,
-    closeOnConfirm: true,
-  }).then(() => {
-    const runner = document.getElementById('runner');
-    if (!runner) return;
-    if (runner.style.display === 'none') return;
-
-    setTimeout(() => {
-      runner.focus();
-      runner.contentWindow.focus();
-    }, 0);
-  });
-}
-
-const htmlEscapeString = (() => {
-  const el = document.createElement('div');
-  return (str) => {
-    el.textContent = str;
-    return el.innerHTML;
-  };
-})();
 
 function stopRun() {
   if (window.debugActive) {
