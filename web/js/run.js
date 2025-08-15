@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { sendHttp } from './utils/network.js';
+
 // Tracks when the program started, and whether the program has done
 // anything observable (as best we can tell).  This is used to decide
 // whether deferred errors are triggering substantially after the
@@ -230,7 +232,7 @@ function start() {
   }, 200);
 }
 
-function init() {
+async function init() {
   let paramList = location.search.slice(1).split('&');
   const params = {};
   for (let i = 0; i < paramList.length; i++) {
@@ -246,17 +248,36 @@ function init() {
     params[name] = value;
   }
 
-  // const hash = params['hash'];
-  // const dhash = params['dhash'];
-  // let mode = params['mode'];
+  let mode = params['mode'];
+  if(!mode) mode = 'codeworld';
 
-  // if (!mode) mode = 'codeworld';
+  const codeSrc = params['loadSrc'];
 
-  // let query = `?mode=${encodeURIComponent(mode)}`;
-  // if (hash) query += `&hash=${encodeURIComponent(hash)}`;
-  // if (dhash) query += `&dhash=${encodeURIComponent(dhash)}`;
+  if(codeSrc) {
+    try {
+      const response = await fetch(codeSrc);
+      const code = await response.text();
 
-  // const uri = `runJS${query}`;
+      if(response.ok){
+        const data = new FormData();
+        data.append('source', code);
+        data.append('mode', mode);
+        sendHttp('POST', 'compile', data, (request) => {
+          const { status, responseText } = request;
+          if(status < 500) {
+            const parts = responseText.split('\n=======================\n');
+            const program = parts[3];
+            const loadScript = document.createElement('script');
+            loadScript.setAttribute('type', 'text/javascript');
+            loadScript.innerHTML = program;
+            document.body.appendChild(loadScript);
+          }
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   window.top.postMessage({
     type: "sendProgram"
