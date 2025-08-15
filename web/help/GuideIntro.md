@@ -58,11 +58,6 @@ sections below to explore each strategy.
     like you hoped.  Remember that we're all in this together, and we're on each other's
     side.
 
-    To get some cool ideas about what you can do in CodeWorld, you might want to check
-    out the [CodeWorld Gallery](/gallery.html), with examples of projects built by
-    other students.  Don't worry if you aren't that advanced yet.  It takes patience,
-    but you can get there, too.
-
 The CodeWorld environment
 =========================
 
