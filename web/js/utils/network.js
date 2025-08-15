@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import { signedIn } from './auth.js';
 /*
  * Utility function for sending an HTTP request to fetch a resource.
  *
@@ -28,8 +27,7 @@ import { signedIn } from './auth.js';
  * it can inspect the response code and headers as well as the contents.
  */
 function sendHttp(method, url, body, callback) {
-  const sendHttpFunc = signedIn() ? window.auth2.sendHttpAuth : sendHttpRaw;
-  return sendHttpFunc(method, url, body, callback);
+  return sendHttpRaw(method, url, body, callback);
 }
 
 function sendHttpRaw(method, url, body, callback) {
