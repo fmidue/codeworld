@@ -16,17 +16,10 @@
 
 import { handleIncomingMessage as passMessageToCodeExplorer } from './codeExplorer.js';
 import {
-  createFolder,
   definePanelExtension,
-  deleteFolder_,
-  deleteProject_,
-  getNearestDirectory,
-  initDirectoryTree,
   initializeLayoutContainer,
   LAYOUT_CONTAINER_CLASSNAME,
-  loadProject,
   loadSample,
-  loadTreeNodes,
   markFailed,
   onHover,
   parseCompileErrors,
@@ -35,48 +28,27 @@ import {
   registerStandardHints,
   renderDeclaration,
   run,
-  saveProjectBase,
-  saveProjectAsBase,
-  share,
-  shareFolder_,
   toggleObsoleteCodeAlert,
-  updateDocumentTitle,
-  updateProjectChangeMark,
-  updateTreeOnNewProjectCreation,
   warnIfUnsaved,
 } from './codeworld_shared.js';
 
 import * as Alert from './utils/alert.js';
-import * as Auth from './utils/auth.js';
-import * as DirTree from './utils/directoryTree.js';
 import { sendHttp } from './utils/network.js';
 import { onObjectPropertyChange } from './utils/object.js';
 
 init();
 
 function attachEventListeners() {
-  $('#signout').on('click', () => {
-    Auth.signOut(isEditorClean, clearWorkspace);
-  });
-  $('#signin').on('click', Auth.signIn);
-
   $('#navButton').on('click', () => {
     $(LAYOUT_CONTAINER_CLASSNAME).layout().toggle('west');
   });
 
   $('#newButton').on('click', newProject);
-  $('#newFolderButton').on('click', newFolder);
-  $('#deleteButton').on('click', deleteProject);
-  $('#saveButton').on('click', saveProject);
-  $('#saveAsButton').on('click', saveProjectAs);
-  $('#downloadButton').on('click', downloadProject);
   $('#docButton').on('click', help);
   $('#toggleThemeButton').on('click', toggleTheme);
-  $('#shareFolderButton').on('click', shareFolder);
 
   $('#startRecButton').on('click', captureStart);
   $('#stopRecButton').on('click', stopRecording);
-  $('#shareButton').on('click', share);
   $('#inspectButton').on('click', inspect);
 
   $('#runButton').on('click', compile);
@@ -86,12 +58,6 @@ function attachEventListeners() {
 }
 
 function attachCustomEventListeners() {
-  $('#directoryTree').on(DirTree.events.SELECTION_CLEARED, () => {
-    $('#deleteButton').hide();
-    $('#saveButton').hide();
-    $('#shareFolderButton').hide();
-    $('#downloadButton').hide();
-  });
 
   const $inspectButton = $('#inspectButton');
 
@@ -113,10 +79,6 @@ function attachCustomEventListeners() {
     }
   });
 
-  onObjectPropertyChange(window, 'savedGeneration', () => {
-    updateDocumentTitle();
-    updateProjectChangeMark();
-  });
 }
 
 function initializeLayout() {
@@ -172,37 +134,6 @@ function initializeLayout() {
 async function init() {
   await Alert.init();
 
-  await Auth.init(() => {
-    const autohelpEnabled = location.hash.length <= 2;
-    let isFirstSignin = true;
-
-    window.auth2.currentUser.listen(() => {
-      if (isFirstSignin && !Auth.signedIn() && autohelpEnabled) {
-        help();
-      }
-
-      isFirstSignin = false;
-    });
-
-    window.auth2.isSignedIn.listen(() => {
-      const layoutHandler = $(LAYOUT_CONTAINER_CLASSNAME).layout();
-
-      if (Auth.signedIn()) {
-        loadTreeNodes(DirTree.getRootNode());
-
-        $('#signin').hide();
-        $('#signout, #navButton').show();
-        layoutHandler.show('west');
-      } else {
-        $('#signin').show();
-        $(
-          '#signout, #saveButton, #navButton, #deleteButton, #shareFolderButton'
-        ).hide();
-        layoutHandler.hide('west');
-      }
-    });
-  });
-
   attachEventListeners();
   attachCustomEventListeners();
 
@@ -217,14 +148,6 @@ async function init() {
   }
   preloadBaseBundle();
   window.setInterval(preloadBaseBundle, 1000 * 60 * 60);
-
-  function loadProjectHandler(name, path) {
-    function successCallback(project) {
-      setCode(project.source, project.history);
-    }
-    loadProject(name, path, window.buildMode, successCallback);
-  }
-  initDirectoryTree(isEditorClean, loadProjectHandler, () => setCode(''));
 
   window.savedGeneration = null;
   window.runningGeneration = null;
@@ -258,42 +181,6 @@ async function init() {
   if (hash.length > 0) {
     if (hash.slice(-2) === '==') {
       hash = hash.slice(0, -2);
-    }
-    if (hash[0] === 'F') {
-      sweetAlert({
-        title: Alert.title('Save As', 'mdi-cloud-upload'),
-        html: 'Enter a name for the shared folder:',
-        input: 'text',
-        confirmButtonText: 'Save',
-        showCancelButton: false,
-      }).then((result) => {
-        if (!result || !result.value) {
-          return;
-        }
-
-        const data = new FormData();
-        data.append('mode', window.buildMode);
-        data.append('shash', hash);
-        data.append('name', result.value);
-
-        sendHttp('POST', 'shareContent', data, (request) => {
-          window.location.hash = '';
-          if (request.status === 200) {
-            sweetAlert(
-              'Success!',
-              'The shared folder has been copied to your root directory.',
-              'success'
-            );
-          } else {
-            sweetAlert(
-              'Oops!',
-              'Could not load the shared directory. Please try again.',
-              'error'
-            );
-          }
-          loadTreeNodes(DirTree.getRootNode());
-        });
-      });
     }
   }
 
@@ -563,19 +450,12 @@ function initCodeworld() {
 
   if (window.localStorage.getItem('darkMode') === 'true') toggleTheme();
 
-  CodeMirror.commands.save = (cm) => {
-    saveProject();
-  };
-
   window.reparseTimeoutId = null;
   window.codeworldEditor.on('changes', ({ doc }, changes) => {
     if (window.reparseTimeoutId) {
       clearTimeout(window.reparseTimeoutId);
     }
     window.reparseTimeoutId = setTimeout(parseSymbolsFromCurrentCode, 1500);
-
-    updateDocumentTitle(isEditorClean);
-    updateProjectChangeMark(isEditorClean);
 
     toggleObsoleteCodeAlert();
   });
@@ -905,24 +785,10 @@ function help() {
 
 function newProject() {
   warnIfUnsaved(isEditorClean, () => {
-    updateTreeOnNewProjectCreation();
-
     setCode('');
 
     document.title = '(new) - CodeWorld';
   });
-}
-
-function newFolder() {
-  function successCallback() {
-    setCode('');
-  }
-  createFolder(
-    isEditorClean,
-    getNearestDirectory(),
-    window.buildMode,
-    successCallback
-  );
 }
 
 function formatSource() {
@@ -1190,106 +1056,6 @@ function compile() {
       sweetAlert.close();
     }
   });
-}
-
-function getCurrentProject() {
-  const doc = window.codeworldEditor.getDoc();
-  const selectedNode = DirTree.getSelectedNode();
-
-  return {
-    name: selectedNode ? selectedNode.name : 'Untitled',
-    source: doc.getValue(),
-    history: doc.getHistory(),
-  };
-}
-
-function saveProjectCallback() {
-  window.savedGeneration = window.codeworldEditor
-    .getDoc()
-    .changeGeneration(true);
-  window.codeworldEditor.focus();
-
-  document.title = document.title.replace('* ', '');
-  $('.unsaved-changes').hide();
-}
-
-function saveProject() {
-  const selectedNode = DirTree.getSelectedNode();
-
-  if (selectedNode) {
-    saveProjectBase(
-      getNearestDirectory(),
-      selectedNode.name,
-      window.projectEnv,
-      saveProjectCallback,
-      getCurrentProject()
-    );
-  } else {
-    saveProjectAs();
-  }
-}
-
-function saveProjectAs() {
-  saveProjectAsBase(saveProjectCallback, getCurrentProject());
-}
-
-function clearWorkspace() {
-  DirTree.clearSelectedNode();
-
-  setCode('');
-}
-
-function deleteFolder() {
-  const path = getNearestDirectory();
-
-  if (path === '') {
-    return;
-  }
-
-  deleteFolder_(path, window.projectEnv, () => {
-    window.savedGeneration = codeworldEditor.getDoc().changeGeneration(true);
-
-    clearWorkspace();
-  });
-}
-
-function deleteProject() {
-  const selectedNode = DirTree.getSelectedNode();
-
-  if (selectedNode && DirTree.isDirectory(selectedNode)) {
-    deleteFolder();
-    return;
-  }
-
-  const path = getNearestDirectory();
-  deleteProject_(path, window.projectEnv, () => {
-    window.savedGeneration = codeworldEditor.getDoc().changeGeneration(true);
-    setCode('');
-  });
-}
-
-function shareFolder() {
-  shareFolder_(window.buildMode);
-}
-
-function downloadProject() {
-  const blob = new Blob([window.codeworldEditor.getDoc().getValue()], {
-    type: 'text/plain',
-    endings: 'native',
-  });
-  const selectedNode = DirTree.getSelectedNode();
-  const filename = `${selectedNode ? selectedNode.name : 'untitled'}.hs`;
-
-  if (window.navigator.msSaveBlob) {
-    window.navigator.msSaveBlob(blob, filename);
-  } else {
-    const elem = window.document.createElement('a');
-    elem.href = window.URL.createObjectURL(blob);
-    elem.download = filename;
-    document.body.appendChild(elem);
-    elem.click();
-    document.body.removeChild(elem);
-  }
 }
 
 // TEMP: required by setCode in codeworld_shared.js
