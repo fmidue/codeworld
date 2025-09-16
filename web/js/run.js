@@ -253,27 +253,30 @@ async function init() {
 
   const codeSrc = params['loadSrc'];
 
-  if(codeSrc) {
+  if(codeSrc || window.preloadCode) {
     try {
-      const response = await fetch(codeSrc);
-      const code = await response.text();
-
-      if(response.ok){
-        const data = new FormData();
-        data.append('source', code);
-        data.append('mode', mode);
-        sendHttp('POST', 'compile', data, (request) => {
-          const { status, responseText } = request;
-          if(status < 500) {
-            const parts = responseText.split('\n=======================\n');
-            const program = parts[3];
-            const loadScript = document.createElement('script');
-            loadScript.setAttribute('type', 'text/javascript');
-            loadScript.innerHTML = program;
-            document.body.appendChild(loadScript);
-          }
-        });
+      let code = window.preloadCode;
+      if(!code) {
+        const response = await fetch(codeSrc);
+        code = await response.text();
+        if(!response.ok) {
+          throw new Error("Could not load source code from external location. Response code not OK.");
+        }
       }
+      const data = new FormData();
+      data.append('source', code);
+      data.append('mode', mode);
+      sendHttp('POST', 'compile', data, (request) => {
+        const { status, responseText } = request;
+        if(status < 500) {
+          const parts = responseText.split('\n=======================\n');
+          const program = parts[3];
+          const loadScript = document.createElement('script');
+          loadScript.setAttribute('type', 'text/javascript');
+          loadScript.innerHTML = program;
+          document.body.appendChild(loadScript);
+        }
+      });
     } catch (error) {
       console.error(error);
     }
