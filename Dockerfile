@@ -185,11 +185,11 @@ RUN node_modules/uglify-js/bin/uglifyjs lib/codemirror.js addon/dialog/dialog.js
 WORKDIR $CODEWORLD_DIR
 
 COPY --chown=codeworld web/ web/
-COPY --chown=codeworld run.sh fix-web.sh ./
+COPY --chown=codeworld run.sh create-symlinks.sh ./
 
 RUN <<KETER
 set -e
-./fix-web.sh
+./create-symlinks.sh
 
 tar -cf codeworld.keter .cabal/store/ghc-8.6.5/ .ghcjs/ base.sh build/bin/codeworld-server build/bin/ghcjs build/lib/x86_64-linux-ghcjs-8.6.0.1-ghc8_6_5 codeworld-base/dist/doc/html/codeworld-base/codeworld-base.txt run.sh web/
 KETER
