@@ -138,13 +138,7 @@ bash -c "source base.sh && cabal_install --ghcjs ./codeworld-error-sanitizer ./c
 
 ghcjs-pkg hide base-compat
 ghcjs-pkg hide ghcjs-dom-jsffi
-ghcjs-pkg hide matrices
-ghcjs-pkg hide simple-affine-space
-ghcjs-pkg hide newtype
-ghcjs-pkg hide non-empty
-ghcjs-pkg hide hgeometry-combinatorial
 ghcjs-pkg hide Cabal
-ghcjs-pkg hide cabal-doctest
 ghcjs-pkg hide some
 
 node $CODEWORLD_DIR/build/bin/find-dup-modules.jsexe/all.js $CODEWORLD_DIR/.ghcjs/x86_64-linux-8.6.0.1-8.6.5/ghcjs/package.conf.d/package.cache
