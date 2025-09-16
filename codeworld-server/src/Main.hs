@@ -132,7 +132,8 @@ site ctx =
           ("errorCheck", errorCheckHandler ctx),
           ("runBaseJS", runBaseHandler ctx),
           ("haskell", serveEditor ctx),
-          ("indent", indentHandler ctx)
+          ("indent", indentHandler ctx),
+          ("run", runHandler ctx)
         ]
    in route routes <|> serveDirectory "web"
 
@@ -251,6 +252,15 @@ indentHandler ctx = do
     handleError (e :: OrmoluException) = do
       modifyResponse $ setResponseCode 500 . setContentType "text/plain"
       writeLBS $ LB.fromStrict $ T.encodeUtf8 $ T.pack (show e)
+
+runHandler :: CodeWorldHandler
+runHandler ctx = do
+  msource <- getParam "source"
+  modifyResponse $ setContentType "text/html"
+  template <- liftIO $ readFile "web/run.html"
+  let code = maybe "" (T.unpack . T.decodeUtf8) msource
+  let content = replace "/*CODE_TO_BE_LOADED_BY_DEFAULT*/" (escapeCode code) template 
+  writeBS $ T.encodeUtf8 $ T.pack content
 
 responseCodeFromCompileStatus :: CompileStatus -> Int
 responseCodeFromCompileStatus CompileSuccess = 200
