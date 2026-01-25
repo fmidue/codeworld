@@ -129,15 +129,18 @@ import Snap.Core
   )
 import System.Directory (doesFileExist)
 import System.FilePath ((</>))
-import Web.JWT (Signer (..))
+import Web.JWT (EncodeSigner (..), VerifySigner (..))
 
-data AuthConfig = AuthConfig Signer Store
+data AuthConfig = AuthConfig EncodeSigner VerifySigner Store
 
 codeWorldIssuer :: Issuer
 codeWorldIssuer = Issuer "https://code.world/"
 
-jwtSigner :: Secret -> Signer
-jwtSigner (Secret bytes) = HMACSecret bytes
+jwtEncodeSigner :: Secret -> EncodeSigner
+jwtEncodeSigner (Secret bytes) = EncodeHMACSecret bytes
+
+jwtVerifySigner :: Secret -> VerifySigner
+jwtVerifySigner (Secret bytes) = VerifyHMACSecret bytes
 
 jwtAuthType :: ByteString
 jwtAuthType = "Bearer"
@@ -152,14 +155,16 @@ configureAuth appDir = do
       putStrLn $ "Secret key file not found at " ++ secretPath ++ ": skipping configuration of local authentication"
       pure Nothing
     True -> do
-      signer <- jwtSigner <$> readSecret secretPath
+      secret <- readSecret secretPath
+      let encodeSigner = jwtEncodeSigner secret
+      let verifySigner = jwtVerifySigner secret
       let store = Store storePath
       storeExists_ <- storeExists store
       case storeExists_ of
         False -> do
           putStrLn $ "Account store database file not found at " ++ storePath ++ ": skipping configuration of local authentication"
           pure Nothing
-        True -> pure $ Just (AuthConfig signer store)
+        True -> pure $ Just (AuthConfig encodeSigner verifySigner store)
 
 authRoutes :: AuthConfig -> [(ByteString, Snap ())]
 authRoutes authConfig =
@@ -183,10 +188,10 @@ optionallyAuthenticated handler authConfig = do
     Just authHeaderBS -> authenticatedHelper authConfig (\userId -> handler $ Just userId) authHeaderBS True
 
 authenticatedHelper :: AuthConfig -> (UserId -> Snap ()) -> ByteString -> Bool -> Snap ()
-authenticatedHelper (AuthConfig signer _) handler authHeaderBS checkExpiry = withSnapExcept $ do
+authenticatedHelper (AuthConfig _ verifySigner _) handler authHeaderBS checkExpiry = withSnapExcept $ do
   AccessToken issuer _ expiresAt userId <- hoistMaybe (finishWith forbidden403) $ do
     j <- parseBearerAuthHeader authHeaderBS
-    parseAccessToken signer j
+    parseAccessToken verifySigner j
 
   when
     (issuer /= codeWorldIssuer)
@@ -201,11 +206,11 @@ authenticatedHelper (AuthConfig signer _) handler authHeaderBS checkExpiry = wit
   lift $ handler userId
 
 refreshTokenHandler :: AuthConfig -> Snap ()
-refreshTokenHandler authConfig@(AuthConfig signer store) = do
+refreshTokenHandler authConfig@(AuthConfig _ verifySigner store) = do
   j <- Text.pack . Char8.unpack <$> getRequiredParam "refreshToken"
   withSnapExcept $ do
     -- 1. Parse refresh token
-    RefreshToken issuer _ expiresAt userId tokenId <- hoistMaybe (finishWith forbidden403) $ parseRefreshToken signer j
+    RefreshToken issuer _ expiresAt userId tokenId <- hoistMaybe (finishWith forbidden403) $ parseRefreshToken verifySigner j
 
     -- 2. Check issuer
     when
@@ -226,7 +231,7 @@ refreshTokenHandler authConfig@(AuthConfig signer store) = do
     lift $ generateTokenJson authConfig userId now
 
 signInHandler :: AuthConfig -> Snap ()
-signInHandler authConfig@(AuthConfig _ store) = withSnapExcept $ do
+signInHandler authConfig@(AuthConfig _ _ store) = withSnapExcept $ do
   req <- lift getRequest
   (userId, password) <- hoistMaybe (finishWith (unauthorized401 jwtAuthType)) $ do
     authHeader <- getHeader "Authorization" req
@@ -261,10 +266,10 @@ signInHandler authConfig@(AuthConfig _ store) = withSnapExcept $ do
           generateTokenJson authConfig userId now
 
 signOutHandler :: AuthConfig -> Snap ()
-signOutHandler (AuthConfig signer store) = do
+signOutHandler (AuthConfig _ verifySigner store) = do
   j <- Text.pack . Char8.unpack <$> getRequiredParam "refreshToken"
   withSnapExcept $ do
-    RefreshToken issuer _ _ userId tokenId <- hoistMaybe (finishWith forbidden403) $ parseRefreshToken signer j
+    RefreshToken issuer _ _ userId tokenId <- hoistMaybe (finishWith forbidden403) $ parseRefreshToken verifySigner j
 
     when
       (issuer /= codeWorldIssuer)
@@ -278,7 +283,7 @@ signOutHandler (AuthConfig signer store) = do
     lift $ finishWith ok200
 
 generateTokenJson :: AuthConfig -> UserId -> UTCTime -> Snap ()
-generateTokenJson (AuthConfig signer store) userId now = withSnapExcept $ do
+generateTokenJson (AuthConfig encodeSigner _ store) userId now = withSnapExcept $ do
   -- 1. Generate new token ID
   mbNewTokenId <- liftIO $ incrementTokenId store userId
   newTokenId <-
@@ -291,19 +296,20 @@ generateTokenJson (AuthConfig signer store) userId now = withSnapExcept $ do
   atJson <-
     hoistMaybe
       (finishWith internalServerError500)
-      (renderAccessToken signer at)
+      (renderAccessToken encodeSigner at)
   let rt = refreshToken codeWorldIssuer now userId newTokenId
   rtJson <-
     hoistMaybe
       (finishWith internalServerError500)
-      (renderRefreshToken signer rt)
+      (renderRefreshToken encodeSigner rt)
 
   -- 7. HTTP 200 response with tokens
-  lift $ ok200Json $
-    m
-      [ ("accessToken", Text.unpack atJson),
-        ("refreshToken", Text.unpack rtJson)
-      ]
+  lift $
+    ok200Json $
+      m
+        [ ("accessToken", Text.unpack atJson),
+          ("refreshToken", Text.unpack rtJson)
+        ]
 
 satisfiesPasswordPolicy :: Password -> Password -> Bool
 satisfiesPasswordPolicy (Password passwordRaw) (Password newPasswordRaw)
