@@ -29,5 +29,25 @@ mkdir -p data/blocklyXML/projects
 
 mkdir -p log
 
-codeworld-game-server +RTS -T &
-run .  codeworld-server -p 8080 --no-access-log
+# Run a server in a loop, restarting on crash
+run_server() {
+  local name=$1
+  shift
+  while true; do
+    echo "$(date): Starting $name" >> log/server-restarts.log
+    "$@"
+    exit_code=$?
+    echo "$(date): $name exited with code $exit_code" >> log/server-restarts.log
+
+    # Exit codes: 0=clean, 137=SIGKILL (from fuser -k), 143=SIGTERM
+    # Only restart on unexpected crashes (like 139=SIGSEGV)
+    if [ $exit_code -eq 0 ] || [ $exit_code -eq 137 ] || [ $exit_code -eq 143 ]; then
+      break
+    fi
+
+    sleep 2
+  done
+}
+
+run_server codeworld-game-server codeworld-game-server +RTS -T &
+run_server codeworld-server codeworld-server -p 8080 --no-access-log
