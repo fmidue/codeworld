@@ -108,8 +108,8 @@ writeUtf8 :: FilePath -> Text -> IO ()
 writeUtf8 f = B.writeFile f . encodeUtf8
 
 compileSource ::
-  Stage -> FilePath -> (String -> IO (Maybe FilePath)) -> FilePath -> String -> Bool -> IO CompileStatus
-compileSource stage src moduleFinder err mode verbose =
+  Stage -> FilePath -> (String -> IO (Maybe FilePath)) -> Maybe FilePath -> FilePath -> String -> Bool -> IO CompileStatus
+compileSource stage src moduleFinder extConfigPath err mode verbose =
   fromMaybe CompileAborted <$> do
     withTimeout timeout $
       withSystemTempDirectory "build" $
@@ -132,7 +132,8 @@ compileSource stage src moduleFinder err mode verbose =
           compileReadSource = Map.empty,
           compileParsedSource = Map.empty,
           compileGHCParsedSource = Map.empty,
-          compileImportLocations = Map.empty
+          compileImportLocations = Map.empty,
+          compileExtensionsConfigPath = extConfigPath
         }
     timeout = case stage of
       GenBase _ _ _ _ -> maxBound :: Int
@@ -191,8 +192,9 @@ prepareCompile dir = do
       liftIO $ copyFile syms (dir </> "out.base.symbs")
       return ["-dedupe", "-use-base", "out.base.symbs"]
   mainMod <- getMainModuleName
+  extConfigPath <- gets compileExtensionsConfigPath
   exePath <- liftIO $ getExecutablePath
-  let configDir = takeDirectory exePath ++ "/../../extensions.yaml" -- /opt/codeword/extensions.yaml
+  let configDir = fromMaybe (takeDirectory exePath ++ "/extensions.yaml") extConfigPath
   parseResult <- liftIO $ decodeFileEither configDir
   ExtraExtensions extraCW extraH <- case parseResult of
     Left error -> do

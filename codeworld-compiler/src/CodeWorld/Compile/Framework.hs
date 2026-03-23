@@ -120,7 +120,8 @@ data CompileState = CompileState
     compileReadSource :: Map FilePath ByteString,
     compileParsedSource :: Map FilePath ParsedCode,
     compileGHCParsedSource :: Map FilePath GHCParsedCode,
-    compileImportLocations :: Map FilePath SrcSpanInfo
+    compileImportLocations :: Map FilePath SrcSpanInfo,
+    compileExtensionsConfigPath :: Maybe FilePath
   }
 
 type MonadCompile m = (MonadState CompileState m, MonadIO m, MonadMask m)
