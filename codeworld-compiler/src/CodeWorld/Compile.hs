@@ -40,7 +40,6 @@ import Control.Monad.IO.Class
 import Control.Monad.State
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
-import Data.Either (fromRight)
 import Data.Function
 import Data.List
 import qualified Data.Map as Map
@@ -50,10 +49,11 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Data.Yaml (FromJSON(..), withObject, (.:), decodeFileEither)
+import Data.Yaml (FromJSON(..), withObject, (.:), decodeFileEither, prettyPrintParseException)
 import ErrorSanitizer
 import Language.Haskell.Exts.SrcLoc
 import System.Directory
+import System.Environment
 import System.Exit (ExitCode (..))
 import System.FilePath
 import System.IO
@@ -191,9 +191,16 @@ prepareCompile dir = do
       liftIO $ copyFile syms (dir </> "out.base.symbs")
       return ["-dedupe", "-use-base", "out.base.symbs"]
   mainMod <- getMainModuleName
-  parseResult <- liftIO $ decodeFileEither "extensions.yaml"
-  let ExtraExtensions extraCW extraH = fromRight (ExtraExtensions [] []) parseResult
-      extraExts
+  exePath <- liftIO $ getExecutablePath
+  let configDir = takeDirectory exePath ++ "/../../extensions.yaml" -- /opt/codeword/extensions.yaml
+  parseResult <- liftIO $ decodeFileEither configDir
+  ExtraExtensions extraCW extraH <- case parseResult of
+    Left error -> do
+      liftIO $ putStrLn "An error occurred while trying to load extensions.yaml."
+      liftIO $ putStrLn $ prettyPrintParseException error
+      pure $ ExtraExtensions [] []
+    Right result -> pure result
+  let extraExts
         | mode == "codeworld" = extraCW
         | otherwise = extraH
   return $ localSrcs ++ buildArgs mainMod mode extraExts ++ extraPkgArgs ++ linkArgs
