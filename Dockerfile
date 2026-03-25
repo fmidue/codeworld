@@ -127,6 +127,18 @@ COPY --chown=codeworld base.sh ./
 
 RUN $CODEWORLD_DIR/mirror/get_mirrored
 
+COPY --chown=codeworld codeworld-error-sanitizer/codeworld-error-sanitizer.cabal codeworld-error-sanitizer/codeworld-error-sanitizer.cabal 
+COPY --chown=codeworld codeworld-api/codeworld-api.cabal codeworld-api/codeworld-api.cabal
+COPY --chown=codeworld codeworld-base/codeworld-base.cabal codeworld-base/codeworld-base.cabal
+COPY --chown=codeworld codeworld-available-pkgs/codeworld-available-pkgs.cabal codeworld-available-pkgs/codeworld-available-pkgs.cabal
+
+RUN bash -c "source base.sh && cabal_install --only-dependencies --ghcjs ./codeworld-error-sanitizer ./codeworld-api ./codeworld-base ./codeworld-available-pkgs"
+
+COPY --chown=codeworld codeworld-server/codeworld-server.cabal codeworld-server/codeworld-server.cabal
+COPY --chown=codeworld codeworld-compiler/codeworld-compiler.cabal codeworld-compiler/codeworld-compiler.cabal
+
+RUN bash -c "source base.sh && cabal_install --only-dependencies ./codeworld-server ./codeworld-error-sanitizer ./codeworld-compiler ./codeworld-api"
+
 COPY --chown=codeworld codeworld-error-sanitizer/ codeworld-error-sanitizer/ 
 COPY --chown=codeworld codeworld-api/ codeworld-api/
 COPY --chown=codeworld codeworld-base/ codeworld-base/
