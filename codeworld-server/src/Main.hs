@@ -133,7 +133,9 @@ site ctx =
           ("runBaseJS", runBaseHandler ctx),
           ("haskell", serveEditor ctx),
           ("indent", indentHandler ctx),
-          ("run", runHandler ctx)
+          ("run", runHandler ctx),
+          ("run.html", redirect "/run"),
+          ("env.html", redirect "/")
         ]
    in route routes <|> serveDirectory "web"
 

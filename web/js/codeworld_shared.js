@@ -972,7 +972,7 @@ function run(hash, dhash, msg, error, generation) {
 
   if (dhash) {
     // const loc = `run.html?dhash=${dhash}&mode=${window.buildMode}`;
-    const loc = `run.html?mode=${window.buildMode}`;
+    const loc = `run?mode=${window.buildMode}`;
     runner.contentWindow.location.replace(loc);
     if (
       Boolean(navigator.mediaDevices) &&
