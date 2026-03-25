@@ -43,6 +43,7 @@ compilerOutput testName =
       ErrorCheck
       ("test/testcases" </> testName </> "source.hs")
       (magicModuleFinder testName dir)
+      Nothing
       (dir </> "output.txt")
       buildMode
       False

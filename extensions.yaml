@@ -1,5 +1,4 @@
-codeworld:
-  - []
+codeworld: []
 haskell:
   - LambdaCase
   - NoTemplateHaskell
