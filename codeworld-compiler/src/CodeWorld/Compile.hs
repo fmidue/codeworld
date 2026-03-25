@@ -198,8 +198,8 @@ prepareCompile dir = do
   parseResult <- liftIO $ decodeFileEither configDir
   ExtraExtensions extraCW extraH <- case parseResult of
     Left error -> do
-      liftIO $ putStrLn "An error occurred while trying to load extensions.yaml."
-      liftIO $ putStrLn $ prettyPrintParseException error
+      liftIO $ hPutStrLn stderr "An error occurred while trying to load extensions.yaml."
+      liftIO $ hPutStrLn stderr $ prettyPrintParseException error
       pure $ ExtraExtensions [] []
     Right result -> pure result
   let extraExts
