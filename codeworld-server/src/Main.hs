@@ -196,7 +196,7 @@ replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesIn
         Nothing -> Nothing
         Just defaultValue -> do
           newRest <- replaceHolesInLine xs (c + 1) (T.drop 1 rest)
-          pure $ before <> defaultValue <> newRest
+          pure $ before <> "(" <> defaultValue <> ")" <> newRest
   
 
 compileHandler :: CodeWorldHandler
@@ -226,12 +226,11 @@ compileHandler ctx = do
           Right _ -> pure (status', res')
           Left error -> do
             let errorSplit = T.splitOn "\n\n" error
-                regex = "^program\\.hs:([[:digit:]]+):([[:digit:]]+): error:[[:cntrl:]] +[^F]+Found hole: _ :: ([[:alnum:]]+)" :: Text
+                regex = "^program\\.hs:([[:digit:]]+):([[:digit:]]+): error:[[:cntrl:]] +[^F]+Found hole: _ :: ([[:print:]]+)[[:cntrl:]]" :: Text
                 matches = concatMap (\block -> block =~ regex :: [[Text]]) errorSplit
                 textToInt = read . T.unpack
                 holes = mapMaybe (\input -> case input of { [_,line,col,ty] -> Just (textToInt line, textToInt col, ty); _ -> Nothing } ) matches
                 replacementMap = defaultHoleValues previewConf
-                
 
             case replaceHolesWithDefaultValue holes replacementMap sourceWithHoles of
               Nothing -> pure (status, res)
