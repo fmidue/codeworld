@@ -28,5 +28,6 @@ fuser -k -n tcp "${PORT}"
 
 mkdir -p log
 
+export CONFIG_PATH=$(pwd)/config.yaml
 export EXTENSIONS_CONFIG_PATH=$(pwd)/extensions.yaml
 run . ./build/bin/codeworld-server -p $PORT --no-access-log

@@ -15,7 +15,7 @@ Description:
 Executable codeworld-server
   Hs-source-dirs: src
   Main-is: Main.hs
-  Other-modules: Model, Util
+  Other-modules: Model, Util, Config
 
   Build-depends:
     aeson,
@@ -23,6 +23,7 @@ Executable codeworld-server
     base64-bytestring,
     bytestring,
     codeworld-compiler,
+    containers,
     cryptonite,
     data-default,
     directory,
@@ -45,7 +46,8 @@ Executable codeworld-server
     temporary,
     text,
     unix,
-    vector
+    vector,
+    yaml
 
   Ghc-options: -threaded
                -Wall
