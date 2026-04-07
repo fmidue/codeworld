@@ -985,6 +985,10 @@ function compile() {
   data.append('source', src);
   data.append('mode', window.buildMode);
 
+  const searchParams = new URLSearchParams(window.location.search);
+
+  if(searchParams.has("enablePreview")) data.append("enablePreview", searchParams.get("enablePreview"));
+
   let compileFinished = false;
 
   window.cancelCompile = () => {
