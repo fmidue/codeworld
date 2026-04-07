@@ -32,8 +32,8 @@ import Control.Applicative
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MSem (MSem)
 import qualified Control.Concurrent.MSem as MSem
-import Control.Exception (bracket_)
-import Control.Exception.Lifted (catch)
+import Control.Exception (SomeException, bracket_, catch)
+import qualified Control.Exception.Lifted as CE (catch)
 import Control.Monad
 import Control.Monad.Trans
 import Data.Aeson
@@ -145,6 +145,16 @@ site ctx =
         ]
    in route routes <|> serveDirectory "web"
 
+assert :: Bool -> IO ()
+assert p =
+  if p
+    then pure ()
+    else fail "assert failed"
+
+tryOr :: a -> IO a -> IO a
+tryOr fallback action = 
+  catch action (\(_ :: SomeException) -> pure fallback)
+
 -- A DirectoryConfig that sets the cache-control header to avoid errors when new
 -- changes are made to JavaScript.
 dirConfig :: DirectoryConfig Snap
@@ -182,6 +192,17 @@ runCompile ctx programId mode source = withSystemTempDirectory "codeworld" $ \te
         pure (status, Left $ T.pack content)
       _ -> pure (status, Left "Something went wrong")
 
+replaceUndefinedWithHole :: Text -> (Int, Text)
+replaceUndefinedWithHole txt = (length matches, replace matches 0 txt)
+  where
+    undefinedRegex = "\\bundefined\\b" :: Text
+    matches = getAllMatches (txt =~ undefinedRegex) :: [(Int,Int)]
+
+    replace [] _ t = t
+    replace ((targetIndex,_):xs) cursor t = 
+      let (before, rest) = T.splitAt (targetIndex - cursor) t
+       in before <> "_" <> replace xs (targetIndex + 9) (T.drop 9 rest)
+
 replaceHolesWithDefaultValue :: [(Int,Int,Text)] -> M.Map Text Text -> Text -> Maybe Text
 replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesInLines lines
   where 
@@ -197,7 +218,14 @@ replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesIn
         Just defaultValue -> do
           newRest <- replaceHolesInLine xs (c + 1) (T.drop 1 rest)
           pure $ before <> "(" <> defaultValue <> ")" <> newRest
-  
+
+extractHolesFromErrorText :: Text -> [(Int,Int,Text)]
+extractHolesFromErrorText error =
+  let errorSplit = T.splitOn "\n\n" error
+      regex = "^program\\.hs:([[:digit:]]+):([[:digit:]]+): error:[[:cntrl:]] +[^F]+Found hole: _ :: ([[:print:]]+)[[:cntrl:]]" :: Text
+      matches = concatMap (\block -> block =~ regex :: [[Text]]) errorSplit
+      textToInt = read . T.unpack
+   in mapMaybe (\input -> case input of { [_,line,col,ty] -> Just (textToInt line, textToInt col, ty); _ -> Nothing } ) matches
 
 compileHandler :: CodeWorldHandler
 compileHandler ctx = do
@@ -215,30 +243,30 @@ compileHandler ctx = do
         Just "false" -> False
         _ -> enabledByDefault previewConf
 
-  (compileStatus, result) <- do 
-    (status, res) <- liftIO $ runCompile ctx programId mode source
-    if not previewsEnabled || status /= CompileSuccess
-      then pure (status, res)
-      else do 
-        let sourceWithHoles = T.replace "undefined" "_" source
-        (status',res') <- liftIO $ runCompile ctx programId mode sourceWithHoles
-        case res' of
-          Right _ -> pure (status', res')
-          Left error -> do
-            let errorSplit = T.splitOn "\n\n" error
-                regex = "^program\\.hs:([[:digit:]]+):([[:digit:]]+): error:[[:cntrl:]] +[^F]+Found hole: _ :: ([[:print:]]+)[[:cntrl:]]" :: Text
-                matches = concatMap (\block -> block =~ regex :: [[Text]]) errorSplit
-                textToInt = read . T.unpack
-                holes = mapMaybe (\input -> case input of { [_,line,col,ty] -> Just (textToInt line, textToInt col, ty); _ -> Nothing } ) matches
-                replacementMap = defaultHoleValues previewConf
+  (compileStatus, result) <- liftIO $ do 
+    (originalStatus, originalResult) <- runCompile ctx programId mode source
 
-            case replaceHolesWithDefaultValue holes replacementMap sourceWithHoles of
-              Nothing -> pure (status, res)
-              Just withDefaultValues -> do
-                (status'',res'') <- liftIO $ runCompile ctx programId mode withDefaultValues
-                case status'' of
-                  CompileSuccess -> pure (status'', res'')
-                  _ -> pure (status, res)
+    tryOr (originalStatus, originalResult) $ do
+      assert previewsEnabled
+      assert $ originalStatus == CompileSuccess
+      
+      let (replaceCount, sourceWithHolePlaceholders) = replaceUndefinedWithHole source
+      assert $ replaceCount > 0
+
+      (_,Left error) <- runCompile ctx programId mode sourceWithHolePlaceholders
+
+      let holes = extractHolesFromErrorText error
+
+      assert $ replaceCount == length holes
+
+      let replacementMap = defaultHoleValues previewConf
+          Just withDefaultValues = replaceHolesWithDefaultValue holes replacementMap sourceWithHolePlaceholders
+
+      (status', res') <- runCompile ctx programId mode withDefaultValues
+
+      assert $ status' == CompileSuccess
+
+      pure (status', res')
 
   let responseBody = T.intercalate "\n=======================\n" $ case result of 
           Right (content, target) -> [id,did,content,target]
@@ -303,7 +331,7 @@ indentHandler :: CodeWorldHandler
 indentHandler ctx = do
   mode <- getBuildMode
   Just source <- getParam "source"
-  reformat source `catch` handleError
+  reformat source `CE.catch` handleError
   where
     reformat source = do
       result <- ormolu defaultConfig "program.hs" (T.unpack (T.decodeUtf8 source))
