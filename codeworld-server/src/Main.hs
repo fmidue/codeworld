@@ -216,7 +216,7 @@ replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesIn
        in case M.lookup ty defaults of
         Nothing -> Nothing
         Just defaultValue -> do
-          newRest <- replaceHolesInLine xs (c + 1) (T.drop 1 rest)
+          newRest <- replaceHolesInLine xs (c + 1) (T.drop 9 rest)
           pure $ before <> "(" <> defaultValue <> ")" <> newRest
 
 extractHolesFromErrorText :: Text -> [(Int,Int,Text)]
@@ -256,11 +256,8 @@ compileHandler ctx = do
       (_,Left error) <- runCompile ctx programId mode sourceWithHolePlaceholders
 
       let holes = extractHolesFromErrorText error
-
-      assert $ replaceCount == length holes
-
-      let replacementMap = defaultHoleValues previewConf
-          Just withDefaultValues = replaceHolesWithDefaultValue holes replacementMap sourceWithHolePlaceholders
+          replacementMap = defaultHoleValues previewConf
+          Just withDefaultValues = replaceHolesWithDefaultValue holes replacementMap source
 
       (status', res') <- runCompile ctx programId mode withDefaultValues
 
