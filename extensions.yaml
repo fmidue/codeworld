@@ -3,3 +3,4 @@ haskell:
   - LambdaCase
   - NoTemplateHaskell
   - TupleSections
+  - OverloadedStrings
