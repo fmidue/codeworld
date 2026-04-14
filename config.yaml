@@ -7,6 +7,7 @@ preview:
     "Picture": "blank"
     "TextStyle": "Plain"
     "Font": "Monospace"
-    "Text": "\"\""
+    "Text": "mempty"
+    "Data.Text.Internal.Text": "mempty"
     "Point": "(0,0)"
     "Vector": "(0,0)"
