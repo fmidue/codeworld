@@ -1,0 +1,13 @@
+preview:
+  enabledByDefault: false
+  defaultHoleValues:
+    "Double -> Picture": "const blank"
+    "Double": "0"
+    "Color": "black"
+    "Picture": "blank"
+    "TextStyle": "Plain"
+    "Font": "Monospace"
+    "Text": "mempty"
+    "Data.Text.Internal.Text": "mempty"
+    "Point": "(0,0)"
+    "Vector": "(0,0)"

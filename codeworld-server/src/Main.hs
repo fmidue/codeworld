@@ -27,12 +27,13 @@ module Main where
 
 import CodeWorld.Compile
 import CodeWorld.Compile.Base
+import Config
 import Control.Applicative
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MSem (MSem)
 import qualified Control.Concurrent.MSem as MSem
-import Control.Exception (bracket_)
-import Control.Exception.Lifted (catch)
+import Control.Exception (SomeException, bracket_, catch)
+import qualified Control.Exception.Lifted as CE (catch)
 import Control.Monad
 import Control.Monad.Trans
 import Data.Aeson
@@ -42,6 +43,7 @@ import qualified Data.ByteString.Lazy as LB
 import Data.Char (isSpace)
 import Data.List
 import Data.List.Extra (replace)
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Monoid
 import Data.Text (Text)
@@ -64,6 +66,7 @@ import System.IO.Temp
 import System.Environment (lookupEnv)
 import Util
 import Text.Read (readMaybe)
+import Text.Regex.TDFA
 
 maxSimultaneousCompiles :: Int
 maxSimultaneousCompiles = 4
@@ -74,24 +77,27 @@ maxSimultaneousErrorChecks = 2
 data Context = Context
   { compileSem :: MSem Int,
     errorSem :: MSem Int,
-    baseSem :: MSem Int
+    baseSem :: MSem Int,
+    config :: Config
   }
 
 main :: IO ()
 main = do
-  ctx <- makeContext
+  cfg <- loadConfig
+  ctx <- makeContext cfg
   port <- maybe Nothing readMaybe <$> lookupEnv "PORT" :: IO (Maybe Int)
   cfg <- S.commandLineConfig ((maybe id (\p -> S.setPort p) port) S.defaultConfig)
   forkIO $ baseVersion >>= buildBaseIfNeeded ctx >> return ()
   httpServe cfg $ (processBody >> site ctx) <|> site ctx
 
-makeContext :: IO Context
-makeContext = do
+makeContext :: Config -> IO Context
+makeContext cfg = do
   ctx <-
     Context
       <$> MSem.new maxSimultaneousCompiles
       <*> MSem.new maxSimultaneousErrorChecks
       <*> MSem.new 1
+      <*> pure cfg
   return ctx
 
 -- | A CodeWorld Snap API action
@@ -139,6 +145,16 @@ site ctx =
         ]
    in route routes <|> serveDirectory "web"
 
+assert :: Bool -> IO ()
+assert p =
+  if p
+    then pure ()
+    else fail "assert failed"
+
+tryOr :: a -> IO a -> IO a
+tryOr fallback action = 
+  catch action (\(_ :: SomeException) -> pure fallback)
+
 -- A DirectoryConfig that sets the cache-control header to avoid errors when new
 -- changes are made to JavaScript.
 dirConfig :: DirectoryConfig Snap
@@ -152,39 +168,106 @@ withProgramLock (BuildMode mode) (ProgramId hash) action = do
   let tmpFile = tmpDir </> "codeworld" <.> T.unpack hash <.> mode
   withFileLock tmpFile Exclusive (const action)
 
-compileHandler :: CodeWorldHandler
-compileHandler ctx = do
-  mode <- getBuildMode
-  Just source <- getParam "source"
-  let programId = sourceToProgramId source
-      deployId = sourceToDeployId source
-      id = unProgramId programId
-      did = unDeployId deployId
 
-  (compileStatus, responseBody) <- liftIO $ withSystemTempDirectory "codeworld" $ \tempDir -> do
+runCompile :: Context -> ProgramId -> BuildMode -> Text -> IO (CompileStatus, Either Text (Text,Text))
+runCompile ctx programId mode source = withSystemTempDirectory "codeworld" $ \tempDir -> do
     let sourceDir = tempDir </> "source"
         buildDir = tempDir </> "build"
     createDirectoryIfMissing True sourceDir
     createDirectoryIfMissing True buildDir
 
     status <- withProgramLock mode programId $ do
-      B.writeFile (sourceDir </> sourceFile programId) source
+      T.writeFile (sourceDir </> sourceFile programId) source
       compileIfNeeded ctx tempDir mode programId
 
     hasResultFile <- doesFileExist (buildDir </> resultFile programId)
 
-    resBody <- case status of
+    case status of
       CompileSuccess | hasResultFile -> do
         content <- readFile (buildDir </> resultFile programId)
         target <- readFile (buildDir </> targetFile programId)
-        pure $ T.intercalate "\n=======================\n" [id,did,T.pack content,T.pack target]
+        pure (status, Right (T.pack content,T.pack target))
       _ | hasResultFile -> do
         content <- readFile (buildDir </> resultFile programId)
-        pure $ T.intercalate "\n=======================\n" [id,did,T.pack content]
-      _ -> pure "Something went wrong"
+        pure (status, Left $ T.pack content)
+      _ -> pure (status, Left "Something went wrong")
+
+replaceUndefinedWithHole :: Text -> (Int, Text)
+replaceUndefinedWithHole txt = (length matches, replace matches 0 txt)
+  where
+    undefinedRegex = "\\bundefined\\b" :: Text
+    matches = getAllMatches (txt =~ undefinedRegex) :: [(Int,Int)]
+
+    replace [] _ t = t
+    replace ((targetIndex,_):xs) cursor t = 
+      let (before, rest) = T.splitAt (targetIndex - cursor) t
+       in before <> "_" <> replace xs (targetIndex + 9) (T.drop 9 rest)
+
+replaceHolesWithDefaultValue :: [(Int,Int,Text)] -> M.Map Text Text -> Text -> Maybe Text
+replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesInLines lines
+  where 
+    lines = zip [1 :: Int ..] $ T.lines input
+
+    replaceHolesInLines lines = traverse (\(num,line) -> replaceHolesInLine (filter (\(r,_,_) -> r == num) holes) 1 line) lines
+
+    replaceHolesInLine [] _ line = Just line
+    replaceHolesInLine ((_,c,ty):xs) cursor line = 
+      let (before,rest) = T.splitAt (c - cursor) line
+       in case M.lookup ty defaults of
+        Nothing -> Nothing
+        Just defaultValue -> do
+          newRest <- replaceHolesInLine xs (c + 1) (T.drop 9 rest)
+          pure $ before <> "(" <> defaultValue <> ")" <> newRest
+
+extractHolesFromErrorText :: Text -> [(Int,Int,Text)]
+extractHolesFromErrorText error =
+  let errorSplit = T.splitOn "\n\n" error
+      regex = "^program\\.hs:([[:digit:]]+):([[:digit:]]+): error:[[:cntrl:]] +[^F]+Found hole: _ :: ([[:print:]]+)[[:cntrl:]]" :: Text
+      matches = concatMap (\block -> block =~ regex :: [[Text]]) errorSplit
+      textToInt = read . T.unpack
+   in mapMaybe (\input -> case input of { [_,line,col,ty] -> Just (textToInt line, textToInt col, ty); _ -> Nothing } ) matches
+
+compileHandler :: CodeWorldHandler
+compileHandler ctx = do
+  mode <- getBuildMode
+  let previewConf = previewConfig $ config ctx
+  Just source <- (T.decodeUtf8 <$>) <$> getParam "source"
+  mPreview <- getParam "enablePreview"
+  let programId = sourceToProgramId $ T.encodeUtf8 source
+      id = unProgramId programId
+      did = "deploy_id"
+      previewsEnabled = case mPreview of
+        Just "True" -> True
+        Just "true" -> True
+        Just "False" -> False
+        Just "false" -> False
+        _ -> enabledByDefault previewConf
+
+  (compileStatus, result) <- liftIO $ do 
+    (originalStatus, originalResult) <- runCompile ctx programId mode source
+
+    tryOr (originalStatus, originalResult) $ do
+      assert previewsEnabled
+      assert $ originalStatus == CompileSuccess
       
-    pure (status, resBody)
-    
+      let (replaceCount, sourceWithHolePlaceholders) = replaceUndefinedWithHole source
+      assert $ replaceCount > 0
+
+      (_,Left error) <- runCompile ctx programId mode sourceWithHolePlaceholders
+
+      let holes = extractHolesFromErrorText error
+          replacementMap = defaultHoleValues previewConf
+          Just withDefaultValues = replaceHolesWithDefaultValue holes replacementMap source
+
+      (status', res') <- runCompile ctx programId mode withDefaultValues
+
+      assert $ status' == CompileSuccess
+
+      pure (status', res')
+
+  let responseBody = T.intercalate "\n=======================\n" $ case result of 
+          Right (content, target) -> [id,did,content,target]
+          Left errorMessage -> [id,did,errorMessage]    
 
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus compileStatus)
   modifyResponse $ setContentType "text/plain"
@@ -245,7 +328,7 @@ indentHandler :: CodeWorldHandler
 indentHandler ctx = do
   mode <- getBuildMode
   Just source <- getParam "source"
-  reformat source `catch` handleError
+  reformat source `CE.catch` handleError
   where
     reformat source = do
       result <- ormolu defaultConfig "program.hs" (T.unpack (T.decodeUtf8 source))

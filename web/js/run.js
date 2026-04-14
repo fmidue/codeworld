@@ -266,6 +266,11 @@ async function init() {
       const data = new FormData();
       data.append('source', code);
       data.append('mode', mode);
+
+      const enablePreview = params['enablePreview'];
+
+      if(enablePreview) data.append('enablePreview',enablePreview);
+      
       sendHttp('POST', 'compile', data, (request) => {
         const { status, responseText } = request;
         if(status < 500) {

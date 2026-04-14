@@ -20,7 +20,7 @@ fi
 
 cp codeworld.tar codeworld-tmp.tar
 
-tar -rf codeworld-tmp.tar config/keter.yaml extensions.yaml
+tar -rf codeworld-tmp.tar config/keter.yaml extensions.yaml config.yaml
 
 gzip codeworld-tmp.tar
 
