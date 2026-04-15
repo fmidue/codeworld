@@ -10,7 +10,6 @@ stanzas:
       LANG: "C.UTF-8"
       LC_ALL: "C.UTF-8"
       PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/codeworld/build/bin"
-      EXTENSIONS_CONFIG_PATH: "/opt/codeworld/extensions.yaml"
       CONFIG_PATH: "/opt/codeworld/config.yaml"
 
     hosts:
