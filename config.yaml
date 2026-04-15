@@ -1,4 +1,4 @@
-compiler:
+compile:
   maxSimultaneousCompiles: 4
   maxSimultaneousErrorChecks: 2
 preview:
