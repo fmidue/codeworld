@@ -6,6 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 {-
   Copyright 2020 The CodeWorld Authors. All rights reserved.
@@ -27,6 +28,7 @@ module CodeWorld.Compile
   ( compileSource,
     Stage (..),
     CompileStatus (..),
+    ExtraExtensions (..),
   )
 where
 
@@ -49,11 +51,9 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Data.Yaml (FromJSON(..), withObject, (.:), decodeFileEither, prettyPrintParseException)
 import ErrorSanitizer
 import Language.Haskell.Exts.SrcLoc
 import System.Directory
-import System.Environment
 import System.Exit (ExitCode (..))
 import System.FilePath
 import System.IO
@@ -108,8 +108,8 @@ writeUtf8 :: FilePath -> Text -> IO ()
 writeUtf8 f = B.writeFile f . encodeUtf8
 
 compileSource ::
-  Stage -> FilePath -> (String -> IO (Maybe FilePath)) -> Maybe FilePath -> FilePath -> String -> Bool -> IO CompileStatus
-compileSource stage src moduleFinder extConfigPath err mode verbose =
+  Stage -> FilePath -> (String -> IO (Maybe FilePath)) -> ExtraExtensions -> FilePath -> String -> Bool -> IO CompileStatus
+compileSource stage src moduleFinder extraExt err mode verbose =
   fromMaybe CompileAborted <$> do
     withTimeout timeout $
       withSystemTempDirectory "build" $
@@ -133,7 +133,7 @@ compileSource stage src moduleFinder extConfigPath err mode verbose =
           compileParsedSource = Map.empty,
           compileGHCParsedSource = Map.empty,
           compileImportLocations = Map.empty,
-          compileExtensionsConfigPath = extConfigPath
+          compileExtraExtensions = extraExt
         }
     timeout = case stage of
       GenBase _ _ _ _ -> maxBound :: Int
@@ -192,19 +192,10 @@ prepareCompile dir = do
       liftIO $ copyFile syms (dir </> "out.base.symbs")
       return ["-dedupe", "-use-base", "out.base.symbs"]
   mainMod <- getMainModuleName
-  extConfigPath <- gets compileExtensionsConfigPath
-  exePath <- liftIO $ getExecutablePath
-  let configDir = fromMaybe (takeDirectory exePath ++ "/extensions.yaml") extConfigPath
-  parseResult <- liftIO $ decodeFileEither configDir
-  ExtraExtensions extraCW extraH <- case parseResult of
-    Left error -> do
-      liftIO $ hPutStrLn stderr "An error occurred while trying to load extensions.yaml."
-      liftIO $ hPutStrLn stderr $ prettyPrintParseException error
-      pure $ ExtraExtensions [] []
-    Right result -> pure result
+  ExtraExtensions {..} <- gets compileExtraExtensions
   let extraExts
-        | mode == "codeworld" = extraCW
-        | otherwise = extraH
+        | mode == "codeworld" = codeworldExtensions
+        | otherwise = haskellExtensions
   return $ localSrcs ++ buildArgs mainMod mode extraExts ++ extraPkgArgs ++ linkArgs
 
 buildArgs :: String -> SourceMode -> [String] -> [String]
@@ -392,9 +383,3 @@ copyOutputFrom target =
       writeUtf8 out (rtsCode <> libCode <> outCode)
     ErrorCheck -> return ()
 
-data ExtraExtensions = ExtraExtensions [String] [String]
-
-instance FromJSON ExtraExtensions where
-  parseJSON = withObject "ExtraExtensions" $ \v -> ExtraExtensions
-    <$> v .: "codeworld"
-    <*> v .: "haskell"
