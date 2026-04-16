@@ -1,11 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Config
   ( Config (..)
+  , CompilerConfig (..)
   , PreviewConfig (..)
   , loadConfig
   ) 
 where
 
+import CodeWorld.Compile (ExtraExtensions(..))
 import Data.Map (Map, fromAscList)
 import Data.Text (Text)
 import Data.Yaml (FromJSON(..), withObject, (.:?), (.!=), decodeFileEither, prettyPrintParseException)
@@ -14,7 +16,14 @@ import System.FilePath (FilePath, takeDirectory)
 import System.IO (hPutStrLn, stderr)
 
 data Config = Config 
-  { previewConfig :: PreviewConfig
+  { compilerConfig :: CompilerConfig
+  , previewConfig :: PreviewConfig
+  , extraExtensions :: ExtraExtensions
+  } deriving Show
+
+data CompilerConfig = CompilerConfig
+  { maxSimultaneousCompiles :: Int
+  , maxSimultaneousErrorChecks :: Int
   } deriving Show
 
 data PreviewConfig = PreviewConfig
@@ -24,7 +33,15 @@ data PreviewConfig = PreviewConfig
 
 defaultConfig :: Config
 defaultConfig = Config
-  { previewConfig = defaultPreviewConfig
+  { compilerConfig = defaultCompilerConfig
+  , previewConfig = defaultPreviewConfig
+  , extraExtensions = ExtraExtensions [] []
+  }
+
+defaultCompilerConfig :: CompilerConfig
+defaultCompilerConfig = CompilerConfig
+  { maxSimultaneousCompiles = 4
+  , maxSimultaneousErrorChecks = 2
   }
 
 defaultPreviewConfig :: PreviewConfig
@@ -35,7 +52,14 @@ defaultPreviewConfig = PreviewConfig
 
 instance FromJSON Config where
   parseJSON = withObject "Config" $ \v -> Config
-    <$> v .:? "preview" .!= defaultPreviewConfig
+    <$> v .:? "compile" .!= defaultCompilerConfig
+    <*> v .:? "preview" .!= defaultPreviewConfig
+    <*> v .:? "extraExtensions" .!= ExtraExtensions [] []
+
+instance FromJSON CompilerConfig where
+  parseJSON = withObject "CompilerConfig" $ \v -> CompilerConfig
+    <$> v .:? "maxSimultaneousCompiles" .!= 4
+    <*> v .:? "maxSimultaneousErrorChecks" .!= 2
 
 instance FromJSON PreviewConfig where
   parseJSON = withObject "PreviewConfig" $ \v -> PreviewConfig

@@ -50,6 +50,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.Text.IO as T
+import Data.Yaml (FromJSON(..), withObject, (.:?), (.!=))
 import qualified "ghc" DynFlags as GHC
 import ErrorSanitizer
 import qualified "ghc" FastString as GHC
@@ -121,7 +122,7 @@ data CompileState = CompileState
     compileParsedSource :: Map FilePath ParsedCode,
     compileGHCParsedSource :: Map FilePath GHCParsedCode,
     compileImportLocations :: Map FilePath SrcSpanInfo,
-    compileExtensionsConfigPath :: Maybe FilePath
+    compileExtraExtensions :: ExtraExtensions
   }
 
 type MonadCompile m = (MonadState CompileState m, MonadIO m, MonadMask m)
@@ -135,6 +136,16 @@ data ParsedCode = Parsed (Module SrcSpanInfo) | NoParse
 
 data GHCParsedCode = GHCParsed (GHC.HsModule GHC.GhcPs) | GHCNoParse
   deriving (Typeable, Data)
+
+data ExtraExtensions = ExtraExtensions
+  { codeworldExtensions :: [String]
+  , haskellExtensions :: [String]
+  } deriving Show
+
+instance FromJSON ExtraExtensions where
+  parseJSON = withObject "ExtraExtensions" $ \v -> ExtraExtensions
+    <$> v .:? "codeworld" .!= []
+    <*> v .:? "haskell" .!= []
 
 getSourceCode :: MonadCompile m => FilePath -> m ByteString
 getSourceCode src = do

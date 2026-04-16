@@ -123,7 +123,7 @@ compileBase Options {..} err = do
             readFile linkBase >>= hPutStrLn stderr
             hPutStrLn stderr "========================="
         let stage = GenBase "LinkBase" linkBase (fromJust output) (fromJust baseSymbols)
-        compileSource stage linkMain noModuleFinder Nothing err mode verbose
+        compileSource stage linkMain noModuleFinder (ExtraExtensions [] []) err mode verbose
 
 compile :: Options -> FilePath -> IO CompileStatus
 compile opts@Options {..} err = do
@@ -132,7 +132,7 @@ compile opts@Options {..} err = do
                 (Nothing, _, _) -> ErrorCheck
                 (Just out, Nothing, _) -> FullBuild out
                 (Just out, Just syms, Just url) -> UseBase out syms url
-    compileSource stage source noModuleFinder Nothing err mode verbose
+    compileSource stage source noModuleFinder (ExtraExtensions [] []) err mode verbose
 
 noModuleFinder :: String -> IO (Maybe FilePath)
 noModuleFinder _ = return Nothing

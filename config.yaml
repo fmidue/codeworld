@@ -1,3 +1,6 @@
+compile:
+  maxSimultaneousCompiles: 4
+  maxSimultaneousErrorChecks: 2
 preview:
   enabledByDefault: false
   defaultHoleValues:
@@ -11,3 +14,9 @@ preview:
     "Data.Text.Internal.Text": "mempty"
     "Point": "(0,0)"
     "Vector": "(0,0)"
+extraExtensions:
+  codeworld: []
+  haskell:
+    - LambdaCase
+    - NoTemplateHaskell
+    - TupleSections

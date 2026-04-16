@@ -68,12 +68,6 @@ import Util
 import Text.Read (readMaybe)
 import Text.Regex.TDFA
 
-maxSimultaneousCompiles :: Int
-maxSimultaneousCompiles = 4
-
-maxSimultaneousErrorChecks :: Int
-maxSimultaneousErrorChecks = 2
-
 data Context = Context
   { compileSem :: MSem Int,
     errorSem :: MSem Int,
@@ -94,8 +88,8 @@ makeContext :: Config -> IO Context
 makeContext cfg = do
   ctx <-
     Context
-      <$> MSem.new maxSimultaneousCompiles
-      <*> MSem.new maxSimultaneousErrorChecks
+      <$> MSem.new (maxSimultaneousCompiles $ compilerConfig cfg)
+      <*> MSem.new (maxSimultaneousErrorChecks $ compilerConfig cfg)
       <*> MSem.new 1
       <*> pure cfg
   return ctx
@@ -369,7 +363,7 @@ compileProgram ctx basePath mode programId = do
 
   case baseStatus of
     CompileSuccess -> do
-      status <- compileIncrementally basePath mode programId ver
+      status <- compileIncrementally ctx basePath mode programId ver
       T.writeFile (basePath </> "build" </> baseVersionFile programId) ver
 
       -- It's possible that a new library was built during the compile.  If so, then the code
@@ -380,10 +374,9 @@ compileProgram ctx basePath mode programId = do
         else compileProgram ctx basePath mode programId
     _ -> return CompileAborted
 
-compileIncrementally :: FilePath -> BuildMode -> ProgramId -> Text -> IO CompileStatus
-compileIncrementally basePath mode programId ver = do
-  extConfigPath <- lookupEnv "EXTENSIONS_CONFIG_PATH" :: IO (Maybe FilePath)
-  compileSource stage source (projectModuleFinder (Just sourceDir) mode) extConfigPath result (getMode mode) False
+compileIncrementally :: Context -> FilePath -> BuildMode -> ProgramId -> Text -> IO CompileStatus
+compileIncrementally ctx basePath mode programId ver =
+  compileSource stage source (projectModuleFinder (Just sourceDir) mode) extraExt result (getMode mode) False
   where
     sourceDir = basePath </> "source"
     source = sourceDir </> sourceFile programId
@@ -391,6 +384,7 @@ compileIncrementally basePath mode programId ver = do
     result = basePath </> "build" </> resultFile programId
     baseURL = "runBaseJS?version=" ++ T.unpack ver
     stage = UseBase target (baseSymbolFile ver) baseURL
+    extraExt = extraExtensions $ config ctx
 
 projectModuleFinder :: Maybe FilePath -> BuildMode -> String -> IO (Maybe FilePath)
 projectModuleFinder mSourceDir mode modName
@@ -413,7 +407,6 @@ buildBaseIfNeeded :: Context -> Text -> IO CompileStatus
 buildBaseIfNeeded ctx ver = do
   codeExists <- doesFileExist (baseCodeFile ver)
   symbolsExist <- doesFileExist (baseSymbolFile ver)
-  extConfigPath <- lookupEnv "EXTENSIONS_CONFIG_PATH" :: IO (Maybe FilePath)
   if not codeExists || not symbolsExist
     then MSem.with (baseSem ctx) $ withSystemTempDirectory "genbase" $ \tmpdir -> do
       let linkMain = tmpdir </> "LinkMain.hs"
@@ -421,7 +414,8 @@ buildBaseIfNeeded ctx ver = do
       let err = tmpdir </> "output.txt"
       generateBaseBundle basePaths baseIgnore "codeworld" linkMain linkBase
       let stage = GenBase "LinkBase" linkBase (baseCodeFile ver) (baseSymbolFile ver)
-      compileSource stage linkMain noModuleFinder extConfigPath err "codeworld" False
+      let extraExt = extraExtensions $ config ctx
+      compileSource stage linkMain noModuleFinder extraExt err "codeworld" False
     else return CompileSuccess
 
 basePaths :: [FilePath]
@@ -435,10 +429,10 @@ errorCheck ctx mode source = withSystemTempDirectory "cw_errorCheck" $ \dir -> d
   let srcFile = dir </> "program.hs"
   let errFile = dir </> "output.txt"
   B.writeFile srcFile source
-  extConfigPath <- lookupEnv "EXTENSIONS_CONFIG_PATH" :: IO (Maybe FilePath)
+  let extraExt = extraExtensions $ config ctx
   status <-
     MSem.with (errorSem ctx) $ MSem.with (compileSem ctx) $
-      compileSource ErrorCheck srcFile (projectModuleFinder Nothing mode) extConfigPath errFile (getMode mode) False
+      compileSource ErrorCheck srcFile (projectModuleFinder Nothing mode) extraExt errFile (getMode mode) False
   hasOutput <- doesFileExist errFile
   output <- if hasOutput then B.readFile errFile else return B.empty
   return (status, output)
