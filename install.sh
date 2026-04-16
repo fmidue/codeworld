@@ -86,7 +86,7 @@ if [ ! -f $BUILD/progress/system-pkgs ]; then
 
     # Needed for GHCJS
     run . sudo apt-get install -y gnupg
-    # If there is version depreciation warning for nodejs,
+    # If there is a Node.js version deprecation warning,
     # Feel free to ignore the below two commands and install nodejs manually in root directory
     # Install Node 12 -> $nvm install 12.22.12
     # Install specific npm version -> $npm install -g npm@6.14.16
