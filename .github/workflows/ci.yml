@@ -18,7 +18,7 @@ jobs:
       matrix:
         versions:
           - ghc: '8.6.5'
-            cabal: '2.4.1.0'
+            cabal: '3.14.2.0'
     steps:
     - uses: actions/checkout@v6
 
