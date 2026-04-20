@@ -24,7 +24,7 @@ jobs:
 
     # need to install older cabal/ghc versions from ppa repository
 
-    - name: Install recent cabal/ghc
+    - name: Install production GHC and recent cabal
       uses: haskell-actions/setup@v2
       with:
         ghc-version: ${{ matrix.versions.ghc }}
