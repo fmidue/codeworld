@@ -56,7 +56,7 @@ jobs:
         cabal build all --dependencies-only --enable-tests --disable-optimization
     - name: Build
       run: |
-        cabal build all --enable-tests --disable-optimization 2>&1 | tee build.log
+        cabal build all --enable-tests --disable-optimization
     # - name: Test # needs GHCJS
     #   run: |
     #     cabal test all --disable-optimization
