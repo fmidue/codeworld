@@ -62,6 +62,7 @@ import Snap.Util.FileUploads
 import System.Directory
 import System.FileLock
 import System.FilePath
+import System.IO (hPutStrLn, stderr)
 import System.IO.Temp
 import System.Environment (lookupEnv)
 import Util
@@ -346,6 +347,13 @@ responseCodeFromCompileStatus CompileSuccess = 200
 responseCodeFromCompileStatus CompileError = 400
 responseCodeFromCompileStatus CompileAborted = 503
 
+waitAndLogExhausted :: String -> MSem Int -> IO b -> IO b
+waitAndLogExhausted name sem action = do
+  open <- MSem.peekAvail sem
+  when (open < 1) $
+    hPutStrLn stderr $ name ++ " has exhausted its available resources, but there is further demand." 
+  MSem.with sem action
+
 compileIfNeeded :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
 compileIfNeeded ctx basePath mode programId = do
   hasResult <- doesFileExist (basePath </> "build" </> resultFile programId)
@@ -354,7 +362,7 @@ compileIfNeeded ctx basePath mode programId = do
       | hasResult && hasTarget -> return CompileSuccess
       | hasResult -> return CompileError
       | otherwise ->
-        MSem.with (compileSem ctx) $ compileProgram ctx basePath mode programId
+        waitAndLogExhausted "Compile" (compileSem ctx) $ compileProgram ctx basePath mode programId
 
 compileProgram :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
 compileProgram ctx basePath mode programId = do
@@ -408,7 +416,7 @@ buildBaseIfNeeded ctx ver = do
   codeExists <- doesFileExist (baseCodeFile ver)
   symbolsExist <- doesFileExist (baseSymbolFile ver)
   if not codeExists || not symbolsExist
-    then MSem.with (baseSem ctx) $ withSystemTempDirectory "genbase" $ \tmpdir -> do
+    then waitAndLogExhausted "Base" (baseSem ctx) $ withSystemTempDirectory "genbase" $ \tmpdir -> do
       let linkMain = tmpdir </> "LinkMain.hs"
       let linkBase = tmpdir </> "LinkBase.hs"
       let err = tmpdir </> "output.txt"
@@ -431,7 +439,7 @@ errorCheck ctx mode source = withSystemTempDirectory "cw_errorCheck" $ \dir -> d
   B.writeFile srcFile source
   let extraExt = extraExtensions $ config ctx
   status <-
-    MSem.with (errorSem ctx) $ MSem.with (compileSem ctx) $
+    waitAndLogExhausted "Error" (errorSem ctx) $ waitAndLogExhausted "Compile" (compileSem ctx) $
       compileSource ErrorCheck srcFile (projectModuleFinder Nothing mode) extraExt errFile (getMode mode) False
   hasOutput <- doesFileExist errFile
   output <- if hasOutput then B.readFile errFile else return B.empty
