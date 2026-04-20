@@ -1,0 +1,8 @@
+packages: */*.cabal
+
+source-repository-package
+    type: git
+    location: https://github.com/fmidue/ghcjs-base-stub.git
+    tag: e19317673d68c2be874fca4661d1ce16b2dc20a1
+
+with-compiler: ghc-8.6.5
