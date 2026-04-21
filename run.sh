@@ -26,7 +26,5 @@ rm -rf $(for fn in $(find data/base -atime +20 -regex .*\\.js$ ); do dirname $fn
 
 fuser -k -n tcp "${PORT}"
 
-mkdir -p log
-
 export CONFIG_PATH=$(pwd)/config.yaml
 run . ./build/bin/codeworld-server -p $PORT --no-access-log
