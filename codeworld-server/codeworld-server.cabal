@@ -15,7 +15,7 @@ Description:
 Executable codeworld-server
   Hs-source-dirs: src
   Main-is: Main.hs
-  Other-modules: Util, Config
+  Other-modules: Config
 
   Build-depends:
     base,

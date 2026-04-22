@@ -56,7 +56,10 @@ import System.IO (hPutStrLn, stderr)
 import System.IO.Temp (withSystemTempDirectory)
 import Text.Read (readMaybe)
 import Text.Regex.TDFA (getAllMatches, (=~))
-import Util (BuildMode (..), baseCodeFile, baseSymbolFile)
+
+
+newtype BuildMode = BuildMode String
+  deriving (Eq)
 
 data Context = Context
   { compileSem :: MSem Int,
@@ -259,11 +262,11 @@ runBaseHandler :: CodeWorldHandler
 runBaseHandler ctx = do
   maybeVer <- fmap T.decodeUtf8 <$> getParam "version"
   case maybeVer of
-    Just ver -> serveFile (baseCodeFile ver)
+    Just ver -> serveFile ("data/base" </> T.unpack ver </> "base.js")
     Nothing -> do
       ver <- liftIO baseVersion
       liftIO $ buildBaseIfNeeded ctx ver
-      serveFile (baseCodeFile ver)
+      serveFile ("data/base" </> T.unpack ver </> "base.js")
 
 escapeCode :: String -> String
 escapeCode input = foldr
@@ -354,7 +357,7 @@ compileIncrementally ctx basePath mode ver =
     target = basePath </> "build" </> "program.js"
     result = basePath </> "build" </> "err.txt"
     baseURL = "runBaseJS?version=" ++ T.unpack ver
-    stage = UseBase target (baseSymbolFile ver) baseURL
+    stage = UseBase target ("data/base" </> T.unpack ver </> "base.symbs") baseURL
     extraExt = extraExtensions $ config ctx
 
 projectModuleFinder :: Maybe FilePath -> BuildMode -> String -> IO (Maybe FilePath)
@@ -376,15 +379,15 @@ noModuleFinder _ = return Nothing
 
 buildBaseIfNeeded :: Context -> Text -> IO CompileStatus
 buildBaseIfNeeded ctx ver = do
-  codeExists <- doesFileExist (baseCodeFile ver)
-  symbolsExist <- doesFileExist (baseSymbolFile ver)
+  codeExists <- doesFileExist ("data/base" </> T.unpack ver </> "base.js")
+  symbolsExist <- doesFileExist ("data/base" </> T.unpack ver </> "base.symbs")
   if not codeExists || not symbolsExist
     then waitAndLogExhausted "Base" (baseSem ctx) $ withSystemTempDirectory "genbase" $ \tmpdir -> do
       let linkMain = tmpdir </> "LinkMain.hs"
       let linkBase = tmpdir </> "LinkBase.hs"
       let err = tmpdir </> "output.txt"
       generateBaseBundle basePaths baseIgnore "codeworld" linkMain linkBase
-      let stage = GenBase "LinkBase" linkBase (baseCodeFile ver) (baseSymbolFile ver)
+      let stage = GenBase "LinkBase" linkBase ("data/base" </> T.unpack ver </> "base.js") ("data/base" </> T.unpack ver </> "base.symbs")
       let extraExt = extraExtensions $ config ctx
       compileSource stage linkMain noModuleFinder extraExt err "codeworld" False
     else return CompileSuccess
