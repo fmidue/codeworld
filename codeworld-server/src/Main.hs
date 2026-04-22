@@ -55,8 +55,8 @@ import Model
 import Network.HTTP.Simple
 import Ormolu (OrmoluException, defaultConfig, ormolu)
 import Snap.Core
-import Snap.Http.Server (httpServe)
-import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setPort)
+import Snap.Http.Server (httpServe, ConfigLog (ConfigIoLog))
+import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setPort, setErrorLog)
 import Snap.Util.FileServe
 import Snap.Util.FileUploads
 import System.Directory
@@ -76,12 +76,16 @@ data Context = Context
     config :: Config
   }
 
+customErrorLog :: ConfigLog
+customErrorLog = ConfigIoLog $ B.hPutStr stderr
+
 main :: IO ()
 main = do
   cfg <- loadConfig
   ctx <- makeContext cfg
   port <- maybe Nothing readMaybe <$> lookupEnv "PORT" :: IO (Maybe Int)
-  cfg <- S.commandLineConfig ((maybe id (\p -> S.setPort p) port) S.defaultConfig)
+  let customDefaultConfig = S.setErrorLog customErrorLog ((maybe id (\p -> S.setPort p) port) S.defaultConfig)
+  cfg <- S.commandLineConfig customDefaultConfig
   forkIO $ baseVersion >>= buildBaseIfNeeded ctx >> return ()
   httpServe cfg $ (processBody >> site ctx) <|> site ctx
 
