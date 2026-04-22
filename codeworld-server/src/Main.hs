@@ -29,14 +29,12 @@ import Control.Applicative ((<|>))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MSem (MSem)
 import qualified Control.Concurrent.MSem as MSem (new, peekAvail, with)
-import Control.Exception (SomeException, bracket_, catch)
+import Control.Exception (SomeException, catch)
 import qualified Control.Exception.Lifted as CE (catch)
 import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as B (ByteString, empty, hPutStr, readFile, writeFile)
-import Data.ByteString.Builder (toLazyByteString)
 import qualified Data.ByteString.Lazy as LB (fromStrict)
-import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import Data.List.Extra (replace)
 import qualified Data.Map as M (Map, lookup)
@@ -76,9 +74,9 @@ main = do
   ctx <- makeContext cfg
   port <- maybe Nothing readMaybe <$> lookupEnv "PORT" :: IO (Maybe Int)
   let customDefaultConfig = S.setErrorLog customErrorLog ((maybe id (\p -> S.setPort p) port) S.defaultConfig)
-  cfg <- S.commandLineConfig customDefaultConfig
+  snapCfg <- S.commandLineConfig customDefaultConfig
   forkIO $ baseVersion >>= buildBaseIfNeeded ctx >> return ()
-  httpServe cfg $ (processBody >> site ctx) <|> site ctx
+  httpServe snapCfg $ (processBody >> site ctx) <|> site ctx
 
 makeContext :: Config -> IO Context
 makeContext cfg = do
@@ -104,12 +102,12 @@ codeworldUploadPolicy =
 #if MIN_VERSION_snap_core(1,0,0)
 processBody :: Snap ()
 processBody = do
-    handleMultipart codeworldUploadPolicy (\x y -> return ())
+    handleMultipart codeworldUploadPolicy (\_ _ -> return ())
     return ()
 #else
 processBody :: Snap ()
 processBody = do
-    handleMultipart codeworldUploadPolicy (\x -> return ())
+    handleMultipart codeworldUploadPolicy (\_ -> return ())
     return ()
 #endif
 
@@ -177,22 +175,22 @@ runCompile ctx mode source = withSystemTempDirectory "codeworld" $ \tempDir -> d
       _ -> pure (status, Left "Something went wrong")
 
 replaceUndefinedWithHole :: Text -> (Int, Text)
-replaceUndefinedWithHole txt = (length matches, replace matches 0 txt)
+replaceUndefinedWithHole txt = (length matches, replaceFn matches 0 txt)
   where
     undefinedRegex = "\\bundefined\\b" :: Text
     matches = getAllMatches (txt =~ undefinedRegex) :: [(Int,Int)]
 
-    replace [] _ t = t
-    replace ((targetIndex,_):xs) cursor t = 
+    replaceFn [] _ t = t
+    replaceFn ((targetIndex,_):xs) cursor t = 
       let (before, rest) = T.splitAt (targetIndex - cursor) t
-       in before <> "_" <> replace xs (targetIndex + 9) (T.drop 9 rest)
+       in before <> "_" <> replaceFn xs (targetIndex + 9) (T.drop 9 rest)
 
 replaceHolesWithDefaultValue :: [(Int,Int,Text)] -> M.Map Text Text -> Text -> Maybe Text
-replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesInLines lines
+replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesInLines codeLines
   where 
-    lines = zip [1 :: Int ..] $ T.lines input
+    codeLines = zip [1 :: Int ..] $ T.lines input
 
-    replaceHolesInLines lines = traverse (\(num,line) -> replaceHolesInLine (filter (\(r,_,_) -> r == num) holes) 1 line) lines
+    replaceHolesInLines codeLines' = traverse (\(num,line) -> replaceHolesInLine (filter (\(r,_,_) -> r == num) holes) 1 line) codeLines'
 
     replaceHolesInLine [] _ line = Just line
     replaceHolesInLine ((_,c,ty):xs) cursor line = 
@@ -204,8 +202,8 @@ replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesIn
           pure $ before <> "(" <> defaultValue <> ")" <> newRest
 
 extractHolesFromErrorText :: Text -> [(Int,Int,Text)]
-extractHolesFromErrorText error =
-  let errorSplit = T.splitOn "\n\n" error
+extractHolesFromErrorText err =
+  let errorSplit = T.splitOn "\n\n" err
       regex = "^program\\.hs:([[:digit:]]+):([[:digit:]]+): error:[[:cntrl:]] +[^F]+Found hole: _ :: ([[:print:]]+)[[:cntrl:]]" :: Text
       matches = concatMap (\block -> block =~ regex :: [[Text]]) errorSplit
       textToInt = read . T.unpack
@@ -234,9 +232,9 @@ compileHandler ctx = do
       let (replaceCount, sourceWithHolePlaceholders) = replaceUndefinedWithHole source
       assert $ replaceCount > 0
 
-      (_,Left error) <- runCompile ctx mode sourceWithHolePlaceholders
+      (_,Left err) <- runCompile ctx mode sourceWithHolePlaceholders
 
-      let holes = extractHolesFromErrorText error
+      let holes = extractHolesFromErrorText err
           replacementMap = defaultHoleValues previewConf
           Just withDefaultValues = replaceHolesWithDefaultValue holes replacementMap source
 
@@ -268,17 +266,12 @@ errorCheckHandler ctx = do
 runBaseHandler :: CodeWorldHandler
 runBaseHandler ctx = do
   maybeVer <- fmap T.decodeUtf8 <$> getParam "version"
-  hasProgram <-
-    (\mode hash dhash -> mode && (hash || dhash))
-      <$> hasParam "mode" <*> hasParam "hash" <*> hasParam "dhash"
   case maybeVer of
     Just ver -> serveFile (baseCodeFile ver)
     Nothing -> do
       ver <- liftIO baseVersion
       liftIO $ buildBaseIfNeeded ctx ver
       serveFile (baseCodeFile ver)
-  where
-    hasParam name = (/= Nothing) <$> getParam name
 
 escapeCode :: String -> String
 escapeCode input = foldr
@@ -290,7 +283,7 @@ escapeCode input = foldr
     toBeEscaped = ["${","`"]
 
 serveEditor :: CodeWorldHandler
-serveEditor ctx = do
+serveEditor _ = do
   msource <- getParam "source"
   modifyResponse $ setContentType "text/html"
   template <- liftIO $ readFile "web/env.html"
@@ -299,8 +292,7 @@ serveEditor ctx = do
   writeBS $ T.encodeUtf8 $ T.pack content
 
 indentHandler :: CodeWorldHandler
-indentHandler ctx = do
-  mode <- getBuildMode
+indentHandler _ = do
   Just source <- getParam "source"
   reformat source `CE.catch` handleError
   where
@@ -313,7 +305,7 @@ indentHandler ctx = do
       writeLBS $ LB.fromStrict $ T.encodeUtf8 $ T.pack (show e)
 
 runHandler :: CodeWorldHandler
-runHandler ctx = do
+runHandler _ = do
   msource <- getParam "source"
   modifyResponse $ setContentType "text/html"
   template <- liftIO $ readFile "web/run.html"
@@ -374,7 +366,7 @@ compileIncrementally ctx basePath mode ver =
     extraExt = extraExtensions $ config ctx
 
 projectModuleFinder :: Maybe FilePath -> BuildMode -> String -> IO (Maybe FilePath)
-projectModuleFinder mSourceDir mode modName
+projectModuleFinder mSourceDir _ modName
   | length modName /= 23 || '.' `elem` modName = return Nothing
   | "P" `isPrefixOf` modName = go
   | otherwise = return Nothing
