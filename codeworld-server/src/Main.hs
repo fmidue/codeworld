@@ -51,7 +51,6 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
 import qualified Data.Vector as V
-import Model
 import Network.HTTP.Simple
 import Ormolu (OrmoluException, defaultConfig, ormolu)
 import Snap.Core
