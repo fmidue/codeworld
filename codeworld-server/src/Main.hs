@@ -50,8 +50,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
-import qualified Data.Vector as V
-import Network.HTTP.Simple
 import Ormolu (OrmoluException, defaultConfig, ormolu)
 import Snap.Core
 import Snap.Http.Server (httpServe, ConfigLog (ConfigIoLog))
@@ -59,7 +57,6 @@ import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig,
 import Snap.Util.FileServe
 import Snap.Util.FileUploads
 import System.Directory
-import System.FileLock
 import System.FilePath
 import System.IO (hPutStrLn, stderr)
 import System.IO.Temp
@@ -160,33 +157,27 @@ dirConfig = defaultDirectoryConfig {preServeHook = disableCache}
   where
     disableCache _ = modifyRequest (addHeader "Cache-control" "no-cache")
 
-withProgramLock :: BuildMode -> ProgramId -> IO a -> IO a
-withProgramLock (BuildMode mode) (ProgramId hash) action = do
-  tmpDir <- getTemporaryDirectory
-  let tmpFile = tmpDir </> "codeworld" <.> T.unpack hash <.> mode
-  withFileLock tmpFile Exclusive (const action)
 
-
-runCompile :: Context -> ProgramId -> BuildMode -> Text -> IO (CompileStatus, Either Text (Text,Text))
-runCompile ctx programId mode source = withSystemTempDirectory "codeworld" $ \tempDir -> do
+runCompile :: Context -> BuildMode -> Text -> IO (CompileStatus, Either Text (Text,Text))
+runCompile ctx mode source = withSystemTempDirectory "codeworld" $ \tempDir -> do
     let sourceDir = tempDir </> "source"
         buildDir = tempDir </> "build"
     createDirectoryIfMissing True sourceDir
     createDirectoryIfMissing True buildDir
 
-    status <- withProgramLock mode programId $ do
-      T.writeFile (sourceDir </> sourceFile programId) source
-      compileIfNeeded ctx tempDir mode programId
+    status <- do
+      T.writeFile (sourceDir </> "program.hs") source
+      compileIfNeeded ctx tempDir mode
 
-    hasResultFile <- doesFileExist (buildDir </> resultFile programId)
+    hasResultFile <- doesFileExist (buildDir </> "err.txt")
 
     case status of
       CompileSuccess | hasResultFile -> do
-        content <- readFile (buildDir </> resultFile programId)
-        target <- readFile (buildDir </> targetFile programId)
+        content <- readFile (buildDir </> "err.txt")
+        target <- readFile (buildDir </> "program.js")
         pure (status, Right (T.pack content,T.pack target))
       _ | hasResultFile -> do
-        content <- readFile (buildDir </> resultFile programId)
+        content <- readFile (buildDir </> "err.txt")
         pure (status, Left $ T.pack content)
       _ -> pure (status, Left "Something went wrong")
 
@@ -231,10 +222,7 @@ compileHandler ctx = do
   let previewConf = previewConfig $ config ctx
   Just source <- (T.decodeUtf8 <$>) <$> getParam "source"
   mPreview <- getParam "enablePreview"
-  let programId = sourceToProgramId $ T.encodeUtf8 source
-      id = unProgramId programId
-      did = "deploy_id"
-      previewsEnabled = case mPreview of
+  let previewsEnabled = case mPreview of
         Just "True" -> True
         Just "true" -> True
         Just "False" -> False
@@ -242,7 +230,7 @@ compileHandler ctx = do
         _ -> enabledByDefault previewConf
 
   (compileStatus, result) <- liftIO $ do 
-    (originalStatus, originalResult) <- runCompile ctx programId mode source
+    (originalStatus, originalResult) <- runCompile ctx mode source
 
     tryOr (originalStatus, originalResult) $ do
       assert previewsEnabled
@@ -251,21 +239,21 @@ compileHandler ctx = do
       let (replaceCount, sourceWithHolePlaceholders) = replaceUndefinedWithHole source
       assert $ replaceCount > 0
 
-      (_,Left error) <- runCompile ctx programId mode sourceWithHolePlaceholders
+      (_,Left error) <- runCompile ctx mode sourceWithHolePlaceholders
 
       let holes = extractHolesFromErrorText error
           replacementMap = defaultHoleValues previewConf
           Just withDefaultValues = replaceHolesWithDefaultValue holes replacementMap source
 
-      (status', res') <- runCompile ctx programId mode withDefaultValues
+      (status', res') <- runCompile ctx mode withDefaultValues
 
       assert $ status' == CompileSuccess
 
       pure (status', res')
 
   let responseBody = T.intercalate "\n=======================\n" $ case result of 
-          Right (content, target) -> [id,did,content,target]
-          Left errorMessage -> [id,did,errorMessage]    
+          Right (content, target) -> [content,target]
+          Left errorMessage -> [errorMessage]
 
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus compileStatus)
   modifyResponse $ setContentType "text/plain"
@@ -281,13 +269,6 @@ errorCheckHandler ctx = do
   case status of
     CompileSuccess -> writeBS ""
     _ -> writeBS output
-
-getHashParam :: Bool -> BuildMode -> Snap ProgramId
-getHashParam allowDeploy mode = do
-  maybeHash <- getParam "hash"
-  case maybeHash of
-    Just h -> return (ProgramId (T.decodeUtf8 h))
-    Nothing -> pass
 
 runBaseHandler :: CodeWorldHandler
 runBaseHandler ctx = do
@@ -357,42 +338,42 @@ waitAndLogExhausted name sem action = do
     hPutStrLn stderr $ name ++ " has exhausted its available resources, but there is further demand." 
   MSem.with sem action
 
-compileIfNeeded :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
-compileIfNeeded ctx basePath mode programId = do
-  hasResult <- doesFileExist (basePath </> "build" </> resultFile programId)
-  hasTarget <- doesFileExist (basePath </> "build" </> targetFile programId)
+compileIfNeeded :: Context -> FilePath -> BuildMode -> IO CompileStatus
+compileIfNeeded ctx basePath mode = do
+  hasResult <- doesFileExist (basePath </> "build" </> "err.txt")
+  hasTarget <- doesFileExist (basePath </> "build" </> "program.js")
   if
       | hasResult && hasTarget -> return CompileSuccess
       | hasResult -> return CompileError
       | otherwise ->
-        waitAndLogExhausted "Compile" (compileSem ctx) $ compileProgram ctx basePath mode programId
+        waitAndLogExhausted "Compile" (compileSem ctx) $ compileProgram ctx basePath mode
 
-compileProgram :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
-compileProgram ctx basePath mode programId = do
+compileProgram :: Context -> FilePath -> BuildMode -> IO CompileStatus
+compileProgram ctx basePath mode = do
   ver <- baseVersion
   baseStatus <- buildBaseIfNeeded ctx ver
 
   case baseStatus of
     CompileSuccess -> do
-      status <- compileIncrementally ctx basePath mode programId ver
-      T.writeFile (basePath </> "build" </> baseVersionFile programId) ver
+      status <- compileIncrementally ctx basePath mode ver
+      T.writeFile (basePath </> "build" </> "basever") ver
 
       -- It's possible that a new library was built during the compile.  If so, then the code
       -- we've just built is suspect, and it's better to just build it anew!
       checkVer <- baseVersion
       if ver == checkVer
         then return status
-        else compileProgram ctx basePath mode programId
+        else compileProgram ctx basePath mode
     _ -> return CompileAborted
 
-compileIncrementally :: Context -> FilePath -> BuildMode -> ProgramId -> Text -> IO CompileStatus
-compileIncrementally ctx basePath mode programId ver =
+compileIncrementally :: Context -> FilePath -> BuildMode -> Text -> IO CompileStatus
+compileIncrementally ctx basePath mode ver =
   compileSource stage source (projectModuleFinder (Just sourceDir) mode) extraExt result (getMode mode) False
   where
     sourceDir = basePath </> "source"
-    source = sourceDir </> sourceFile programId
-    target = basePath </> "build" </> targetFile programId
-    result = basePath </> "build" </> resultFile programId
+    source = sourceDir </> "program.hs"
+    target = basePath </> "build" </> "program.js"
+    result = basePath </> "build" </> "err.txt"
     baseURL = "runBaseJS?version=" ++ T.unpack ver
     stage = UseBase target (baseSymbolFile ver) baseURL
     extraExt = extraExtensions $ config ctx
@@ -400,14 +381,14 @@ compileIncrementally ctx basePath mode programId ver =
 projectModuleFinder :: Maybe FilePath -> BuildMode -> String -> IO (Maybe FilePath)
 projectModuleFinder mSourceDir mode modName
   | length modName /= 23 || '.' `elem` modName = return Nothing
-  | "P" `isPrefixOf` modName = go (ProgramId (T.pack modName))
+  | "P" `isPrefixOf` modName = go
   | otherwise = return Nothing
   where
-    go programId = do
+    go = do
       case mSourceDir of
         Nothing -> return Nothing
         Just sourceDir -> do 
-          let path = sourceDir </> sourceFile programId
+          let path = sourceDir </> "program.hs"
           exists <- doesFileExist path
           if exists then return (Just path) else return Nothing
 
