@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-
 {-
   Copyright 2020 The CodeWorld Authors. All rights reserved.
 
