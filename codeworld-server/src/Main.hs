@@ -44,10 +44,10 @@ import qualified Data.Text as T (drop, intercalate, lines, pack, splitAt, splitO
 import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
 import qualified Data.Text.IO as T (writeFile)
 import Ormolu (OrmoluException, defaultConfig, ormolu)
-import Snap.Core (Snap, addHeader, getParam, modifyRequest, modifyResponse, redirect, route, setContentType, setResponseCode, writeBS, writeLBS)
+import Snap.Core (Snap, getParam, modifyResponse, redirect, route, setContentType, setResponseCode, writeBS, writeLBS)
 import Snap.Http.Server (ConfigLog (ConfigIoLog), httpServe)
 import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setErrorLog, setPort)
-import Snap.Util.FileServe (DirectoryConfig (..), defaultDirectoryConfig, serveDirectory, serveFile)
+import Snap.Util.FileServe (serveDirectory, serveFile)
 import Snap.Util.FileUploads (UploadPolicy, defaultUploadPolicy, handleMultipart, setMaximumFormInputSize)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Environment (lookupEnv)
@@ -142,14 +142,6 @@ assert p =
 tryOr :: a -> IO a -> IO a
 tryOr fallback action = 
   catch action (\(_ :: SomeException) -> pure fallback)
-
--- A DirectoryConfig that sets the cache-control header to avoid errors when new
--- changes are made to JavaScript.
-dirConfig :: DirectoryConfig Snap
-dirConfig = defaultDirectoryConfig {preServeHook = disableCache}
-  where
-    disableCache _ = modifyRequest (addHeader "Cache-control" "no-cache")
-
 
 runCompile :: Context -> BuildMode -> Text -> IO (CompileStatus, Either Text (Text,Text))
 runCompile ctx mode source = withSystemTempDirectory "codeworld" $ \tempDir -> do
