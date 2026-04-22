@@ -275,7 +275,7 @@ async function init() {
         const { status, responseText } = request;
         if(status < 500) {
           const parts = responseText.split('\n=======================\n');
-          const program = parts[3];
+          const program = parts[1];
           const loadScript = document.createElement('script');
           loadScript.setAttribute('type', 'text/javascript');
           loadScript.innerHTML = program;

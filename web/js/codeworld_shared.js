@@ -1110,6 +1110,15 @@ function parseCompileErrors(rawErrors) {
   return errors;
 }
 
+async function sha256digest(data) {
+  const buffer = new TextEncoder().encode(data);
+  return await crypto.subtle.digest('SHA-256', buffer).then((hash) => {
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  });
+}
+
 export {
   clearMessages,
   definePanelExtension,
@@ -1126,4 +1135,5 @@ export {
   run,
   toggleObsoleteCodeAlert,
   warnIfUnsaved,
+  sha256digest,
 };
