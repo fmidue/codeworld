@@ -18,7 +18,6 @@ Executable codeworld-server
   Other-modules: Util, Config
 
   Build-depends:
-    aeson,
     base,
     bytestring,
     codeworld-compiler,

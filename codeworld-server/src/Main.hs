@@ -25,45 +25,43 @@
 -}
 module Main where
 
-import CodeWorld.Compile
-import CodeWorld.Compile.Base
-import Config
-import Control.Applicative
+import CodeWorld.Compile (CompileStatus (..), Stage (..), compileSource)
+import CodeWorld.Compile.Base (baseVersion, generateBaseBundle)
+import Config (CompilerConfig (..), Config (..), PreviewConfig (..), loadConfig)
+import Control.Applicative ((<|>))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MSem (MSem)
-import qualified Control.Concurrent.MSem as MSem
+import qualified Control.Concurrent.MSem as MSem (new, peekAvail, with)
 import Control.Exception (SomeException, bracket_, catch)
 import qualified Control.Exception.Lifted as CE (catch)
-import Control.Monad
-import Control.Monad.Trans
-import Data.Aeson
-import qualified Data.ByteString as B
+import Control.Monad (when)
+import Control.Monad.Trans (liftIO)
+import qualified Data.ByteString as B (ByteString, empty, hPutStr, readFile, writeFile)
 import Data.ByteString.Builder (toLazyByteString)
-import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy as LB (fromStrict)
 import Data.Char (isSpace)
-import Data.List
+import Data.List (isPrefixOf)
 import Data.List.Extra (replace)
-import qualified Data.Map as M
-import Data.Maybe
-import Data.Monoid
+import qualified Data.Map as M (Map, lookup)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.IO as T
+import qualified Data.Text as T (drop, intercalate, lines, pack, splitAt, splitOn, unlines, unpack)
+import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
+import qualified Data.Text.IO as T (writeFile)
 import Ormolu (OrmoluException, defaultConfig, ormolu)
-import Snap.Core
-import Snap.Http.Server (httpServe, ConfigLog (ConfigIoLog))
-import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setPort, setErrorLog)
-import Snap.Util.FileServe
-import Snap.Util.FileUploads
-import System.Directory
-import System.FilePath
-import System.IO (hPutStrLn, stderr)
-import System.IO.Temp
+import Snap.Core (Snap, addHeader, getParam, modifyRequest, modifyResponse, redirect, route, setContentType, setResponseCode, writeBS, writeLBS)
+import Snap.Http.Server (ConfigLog (ConfigIoLog), httpServe)
+import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setErrorLog, setPort)
+import Snap.Util.FileServe (DirectoryConfig (..), defaultDirectoryConfig, serveDirectory, serveFile)
+import Snap.Util.FileUploads (UploadPolicy, defaultUploadPolicy, handleMultipart, setMaximumFormInputSize)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Environment (lookupEnv)
-import Util
+import System.FilePath ((</>))
+import System.IO (hPutStrLn, stderr)
+import System.IO.Temp (withSystemTempDirectory)
 import Text.Read (readMaybe)
-import Text.Regex.TDFA
+import Text.Regex.TDFA (getAllMatches, (=~))
+import Util (BuildMode (..), baseCodeFile, baseSymbolFile)
 
 data Context = Context
   { compileSem :: MSem Int,
