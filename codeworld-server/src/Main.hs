@@ -3,10 +3,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns
-    -fno-warn-name-shadowing
-    -fno-warn-unused-imports
-    -fno-warn-unused-matches #-}
+
 
 {-
   Copyright 2020 The CodeWorld Authors. All rights reserved.
