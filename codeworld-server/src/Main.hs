@@ -144,6 +144,16 @@ tryOr :: a -> IO a -> IO a
 tryOr fallback action = 
   catch action (\(_ :: SomeException) -> pure fallback)
 
+withRequiredParam :: B.ByteString -> (B.ByteString -> Snap ()) -> Snap ()
+withRequiredParam paramName handler = do
+  mValue <- getParam paramName
+  case mValue of
+    Nothing -> do
+      modifyResponse $ setResponseCode 400
+      modifyResponse $ setContentType "text/plain"
+      writeBS $ ("Unable to process request. Parameter '" <> paramName <> "' required but not present.")
+    Just value -> handler value
+
 runCompile :: Context -> BuildMode -> Text -> IO (CompileStatus, Either Text (Text,Text))
 runCompile ctx mode source = withSystemTempDirectory "codeworld" $ \tempDir -> do
     let sourceDir = tempDir </> "source"
@@ -203,10 +213,10 @@ extractHolesFromErrorText err =
    in mapMaybe (\input -> case input of { [_,line,col,ty] -> Just (textToInt line, textToInt col, ty); _ -> Nothing } ) matches
 
 compileHandler :: CodeWorldHandler
-compileHandler ctx = do
+compileHandler ctx = withRequiredParam "source" $ \sourceBS -> do
   mode <- getBuildMode
   let previewConf = previewConfig $ config ctx
-  Just source <- (T.decodeUtf8 <$>) <$> getParam "source"
+      source = T.decodeUtf8 sourceBS
   mPreview <- getParam "enablePreview"
   let previewsEnabled = case mPreview of
         Just "True" -> True
@@ -246,9 +256,8 @@ compileHandler ctx = do
   writeBS $ T.encodeUtf8 responseBody
 
 errorCheckHandler :: CodeWorldHandler
-errorCheckHandler ctx = do
+errorCheckHandler ctx = withRequiredParam "source" $ \source -> do
   mode <- getBuildMode
-  Just source <- getParam "source"
   (status, output) <- liftIO $ errorCheck ctx mode source
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus status)
   modifyResponse $ setContentType "text/plain"
@@ -285,8 +294,7 @@ serveEditor _ = do
   writeBS $ T.encodeUtf8 $ T.pack content
 
 indentHandler :: CodeWorldHandler
-indentHandler _ = do
-  Just source <- getParam "source"
+indentHandler _ = withRequiredParam "source" $ \source -> do
   reformat source `CE.catch` handleError
   where
     reformat source = do
