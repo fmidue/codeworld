@@ -3,10 +3,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns
-    -fno-warn-name-shadowing
-    -fno-warn-unused-imports
-    -fno-warn-unused-matches #-}
 
 {-
   Copyright 2020 The CodeWorld Authors. All rights reserved.
@@ -25,49 +21,43 @@
 -}
 module Main where
 
-import CodeWorld.Compile
-import CodeWorld.Compile.Base
-import Config
-import Control.Applicative
+import CodeWorld.Compile (CompileStatus (..), Stage (..), compileSource)
+import CodeWorld.Compile.Base (baseVersion, generateBaseBundle)
+import Config (CompilerConfig (..), Config (..), PreviewConfig (..), loadConfig)
+import Control.Applicative ((<|>))
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MSem (MSem)
-import qualified Control.Concurrent.MSem as MSem
-import Control.Exception (SomeException, bracket_, catch)
+import qualified Control.Concurrent.MSem as MSem (new, peekAvail, with)
+import Control.Exception (SomeException, catch)
 import qualified Control.Exception.Lifted as CE (catch)
-import Control.Monad
-import Control.Monad.Trans
-import Data.Aeson
-import qualified Data.ByteString as B
-import Data.ByteString.Builder (toLazyByteString)
-import qualified Data.ByteString.Lazy as LB
-import Data.Char (isSpace)
-import Data.List
+import Control.Monad (when)
+import Control.Monad.Trans (liftIO)
+import qualified Data.ByteString as B (ByteString, empty, hPutStr, readFile, writeFile)
+import qualified Data.ByteString.Lazy as LB (fromStrict)
 import Data.List.Extra (replace)
-import qualified Data.Map as M
-import Data.Maybe
-import Data.Monoid
+import qualified Data.Map as M (Map, lookup)
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.IO as T
-import qualified Data.Vector as V
-import Model
-import Network.HTTP.Simple
+import qualified Data.Text as T (drop, intercalate, lines, pack, splitAt, splitOn, unlines, unpack)
+import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
+import qualified Data.Text.IO as T (writeFile)
 import Ormolu (OrmoluException, defaultConfig, ormolu)
-import Snap.Core
-import Snap.Http.Server (httpServe, ConfigLog (ConfigIoLog))
-import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setPort, setErrorLog)
-import Snap.Util.FileServe
-import Snap.Util.FileUploads
-import System.Directory
-import System.FileLock
-import System.FilePath
-import System.IO (hPutStrLn, stderr)
-import System.IO.Temp
+import Snap.Core (Snap, getParam, modifyResponse, redirect, route, setContentType, setResponseCode, writeBS, writeLBS)
+import Snap.Http.Server (ConfigLog (ConfigIoLog), httpServe)
+import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setErrorLog, setPort)
+import Snap.Util.FileServe (serveDirectory, serveFile)
+import Snap.Util.FileUploads (UploadPolicy, defaultUploadPolicy, handleMultipart, setMaximumFormInputSize)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.Environment (lookupEnv)
-import Util
+import System.FilePath ((</>))
+import System.IO (hPutStrLn, stderr)
+import System.IO.Temp (withSystemTempDirectory)
 import Text.Read (readMaybe)
-import Text.Regex.TDFA
+import Text.Regex.TDFA (getAllMatches, (=~))
+
+
+newtype BuildMode = BuildMode String
+  deriving (Eq)
 
 data Context = Context
   { compileSem :: MSem Int,
@@ -85,9 +75,9 @@ main = do
   ctx <- makeContext cfg
   port <- maybe Nothing readMaybe <$> lookupEnv "PORT" :: IO (Maybe Int)
   let customDefaultConfig = S.setErrorLog customErrorLog ((maybe id (\p -> S.setPort p) port) S.defaultConfig)
-  cfg <- S.commandLineConfig customDefaultConfig
+  snapCfg <- S.commandLineConfig customDefaultConfig
   forkIO $ baseVersion >>= buildBaseIfNeeded ctx >> return ()
-  httpServe cfg $ (processBody >> site ctx) <|> site ctx
+  httpServe snapCfg $ (processBody >> site ctx) <|> site ctx
 
 makeContext :: Config -> IO Context
 makeContext cfg = do
@@ -113,12 +103,12 @@ codeworldUploadPolicy =
 #if MIN_VERSION_snap_core(1,0,0)
 processBody :: Snap ()
 processBody = do
-    handleMultipart codeworldUploadPolicy (\x y -> return ())
+    handleMultipart codeworldUploadPolicy (\_ _ -> return ())
     return ()
 #else
 processBody :: Snap ()
 processBody = do
-    handleMultipart codeworldUploadPolicy (\x -> return ())
+    handleMultipart codeworldUploadPolicy (\_ -> return ())
     return ()
 #endif
 
@@ -154,60 +144,56 @@ tryOr :: a -> IO a -> IO a
 tryOr fallback action = 
   catch action (\(_ :: SomeException) -> pure fallback)
 
--- A DirectoryConfig that sets the cache-control header to avoid errors when new
--- changes are made to JavaScript.
-dirConfig :: DirectoryConfig Snap
-dirConfig = defaultDirectoryConfig {preServeHook = disableCache}
-  where
-    disableCache _ = modifyRequest (addHeader "Cache-control" "no-cache")
+withRequiredParam :: B.ByteString -> (B.ByteString -> Snap ()) -> Snap ()
+withRequiredParam paramName handler = do
+  mValue <- getParam paramName
+  case mValue of
+    Nothing -> do
+      modifyResponse $ setResponseCode 400
+      modifyResponse $ setContentType "text/plain"
+      writeBS $ ("Unable to process request. Parameter '" <> paramName <> "' required but not present.")
+    Just value -> handler value
 
-withProgramLock :: BuildMode -> ProgramId -> IO a -> IO a
-withProgramLock (BuildMode mode) (ProgramId hash) action = do
-  tmpDir <- getTemporaryDirectory
-  let tmpFile = tmpDir </> "codeworld" <.> T.unpack hash <.> mode
-  withFileLock tmpFile Exclusive (const action)
-
-
-runCompile :: Context -> ProgramId -> BuildMode -> Text -> IO (CompileStatus, Either Text (Text,Text))
-runCompile ctx programId mode source = withSystemTempDirectory "codeworld" $ \tempDir -> do
+runCompile :: Context -> BuildMode -> Text -> IO (CompileStatus, Either Text (Text,Text))
+runCompile ctx mode source = withSystemTempDirectory "codeworld" $ \tempDir -> do
     let sourceDir = tempDir </> "source"
         buildDir = tempDir </> "build"
     createDirectoryIfMissing True sourceDir
     createDirectoryIfMissing True buildDir
 
-    status <- withProgramLock mode programId $ do
-      T.writeFile (sourceDir </> sourceFile programId) source
-      compileIfNeeded ctx tempDir mode programId
+    status <- do
+      T.writeFile (sourceDir </> "program.hs") source
+      compileIfNeeded ctx tempDir mode
 
-    hasResultFile <- doesFileExist (buildDir </> resultFile programId)
+    hasResultFile <- doesFileExist (buildDir </> "err.txt")
 
     case status of
       CompileSuccess | hasResultFile -> do
-        content <- readFile (buildDir </> resultFile programId)
-        target <- readFile (buildDir </> targetFile programId)
+        content <- readFile (buildDir </> "err.txt")
+        target <- readFile (buildDir </> "program.js")
         pure (status, Right (T.pack content,T.pack target))
       _ | hasResultFile -> do
-        content <- readFile (buildDir </> resultFile programId)
+        content <- readFile (buildDir </> "err.txt")
         pure (status, Left $ T.pack content)
       _ -> pure (status, Left "Something went wrong")
 
 replaceUndefinedWithHole :: Text -> (Int, Text)
-replaceUndefinedWithHole txt = (length matches, replace matches 0 txt)
+replaceUndefinedWithHole txt = (length matches, replaceFn matches 0 txt)
   where
     undefinedRegex = "\\bundefined\\b" :: Text
     matches = getAllMatches (txt =~ undefinedRegex) :: [(Int,Int)]
 
-    replace [] _ t = t
-    replace ((targetIndex,_):xs) cursor t = 
+    replaceFn [] _ t = t
+    replaceFn ((targetIndex,_):xs) cursor t = 
       let (before, rest) = T.splitAt (targetIndex - cursor) t
-       in before <> "_" <> replace xs (targetIndex + 9) (T.drop 9 rest)
+       in before <> "_" <> replaceFn xs (targetIndex + 9) (T.drop 9 rest)
 
 replaceHolesWithDefaultValue :: [(Int,Int,Text)] -> M.Map Text Text -> Text -> Maybe Text
-replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesInLines lines
+replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesInLines codeLines
   where 
-    lines = zip [1 :: Int ..] $ T.lines input
+    codeLines = zip [1 :: Int ..] $ T.lines input
 
-    replaceHolesInLines lines = traverse (\(num,line) -> replaceHolesInLine (filter (\(r,_,_) -> r == num) holes) 1 line) lines
+    replaceHolesInLines codeLines' = traverse (\(num,line) -> replaceHolesInLine (filter (\(r,_,_) -> r == num) holes) 1 line) codeLines'
 
     replaceHolesInLine [] _ line = Just line
     replaceHolesInLine ((_,c,ty):xs) cursor line = 
@@ -219,23 +205,20 @@ replaceHolesWithDefaultValue holes defaults input = T.unlines <$> replaceHolesIn
           pure $ before <> "(" <> defaultValue <> ")" <> newRest
 
 extractHolesFromErrorText :: Text -> [(Int,Int,Text)]
-extractHolesFromErrorText error =
-  let errorSplit = T.splitOn "\n\n" error
+extractHolesFromErrorText err =
+  let errorSplit = T.splitOn "\n\n" err
       regex = "^program\\.hs:([[:digit:]]+):([[:digit:]]+): error:[[:cntrl:]] +[^F]+Found hole: _ :: ([[:print:]]+)[[:cntrl:]]" :: Text
       matches = concatMap (\block -> block =~ regex :: [[Text]]) errorSplit
       textToInt = read . T.unpack
    in mapMaybe (\input -> case input of { [_,line,col,ty] -> Just (textToInt line, textToInt col, ty); _ -> Nothing } ) matches
 
 compileHandler :: CodeWorldHandler
-compileHandler ctx = do
+compileHandler ctx = withRequiredParam "source" $ \sourceBS -> do
   mode <- getBuildMode
   let previewConf = previewConfig $ config ctx
-  Just source <- (T.decodeUtf8 <$>) <$> getParam "source"
+      source = T.decodeUtf8 sourceBS
   mPreview <- getParam "enablePreview"
-  let programId = sourceToProgramId $ T.encodeUtf8 source
-      id = unProgramId programId
-      did = "deploy_id"
-      previewsEnabled = case mPreview of
+  let previewsEnabled = case mPreview of
         Just "True" -> True
         Just "true" -> True
         Just "False" -> False
@@ -243,7 +226,7 @@ compileHandler ctx = do
         _ -> enabledByDefault previewConf
 
   (compileStatus, result) <- liftIO $ do 
-    (originalStatus, originalResult) <- runCompile ctx programId mode source
+    (originalStatus, originalResult) <- runCompile ctx mode source
 
     tryOr (originalStatus, originalResult) $ do
       assert previewsEnabled
@@ -252,30 +235,29 @@ compileHandler ctx = do
       let (replaceCount, sourceWithHolePlaceholders) = replaceUndefinedWithHole source
       assert $ replaceCount > 0
 
-      (_,Left error) <- runCompile ctx programId mode sourceWithHolePlaceholders
+      (_,Left err) <- runCompile ctx mode sourceWithHolePlaceholders
 
-      let holes = extractHolesFromErrorText error
+      let holes = extractHolesFromErrorText err
           replacementMap = defaultHoleValues previewConf
           Just withDefaultValues = replaceHolesWithDefaultValue holes replacementMap source
 
-      (status', res') <- runCompile ctx programId mode withDefaultValues
+      (status', res') <- runCompile ctx mode withDefaultValues
 
       assert $ status' == CompileSuccess
 
       pure (status', res')
 
   let responseBody = T.intercalate "\n=======================\n" $ case result of 
-          Right (content, target) -> [id,did,content,target]
-          Left errorMessage -> [id,did,errorMessage]    
+          Right (content, target) -> [content,target]
+          Left errorMessage -> [errorMessage]
 
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus compileStatus)
   modifyResponse $ setContentType "text/plain"
   writeBS $ T.encodeUtf8 responseBody
 
 errorCheckHandler :: CodeWorldHandler
-errorCheckHandler ctx = do
+errorCheckHandler ctx = withRequiredParam "source" $ \source -> do
   mode <- getBuildMode
-  Just source <- getParam "source"
   (status, output) <- liftIO $ errorCheck ctx mode source
   modifyResponse $ setResponseCode (responseCodeFromCompileStatus status)
   modifyResponse $ setContentType "text/plain"
@@ -283,27 +265,15 @@ errorCheckHandler ctx = do
     CompileSuccess -> writeBS ""
     _ -> writeBS output
 
-getHashParam :: Bool -> BuildMode -> Snap ProgramId
-getHashParam allowDeploy mode = do
-  maybeHash <- getParam "hash"
-  case maybeHash of
-    Just h -> return (ProgramId (T.decodeUtf8 h))
-    Nothing -> pass
-
 runBaseHandler :: CodeWorldHandler
 runBaseHandler ctx = do
   maybeVer <- fmap T.decodeUtf8 <$> getParam "version"
-  hasProgram <-
-    (\mode hash dhash -> mode && (hash || dhash))
-      <$> hasParam "mode" <*> hasParam "hash" <*> hasParam "dhash"
   case maybeVer of
-    Just ver -> serveFile (baseCodeFile ver)
+    Just ver -> serveFile ("data/base" </> T.unpack ver </> "base.js")
     Nothing -> do
       ver <- liftIO baseVersion
       liftIO $ buildBaseIfNeeded ctx ver
-      serveFile (baseCodeFile ver)
-  where
-    hasParam name = (/= Nothing) <$> getParam name
+      serveFile ("data/base" </> T.unpack ver </> "base.js")
 
 escapeCode :: String -> String
 escapeCode input = foldr
@@ -315,7 +285,7 @@ escapeCode input = foldr
     toBeEscaped = ["${","`"]
 
 serveEditor :: CodeWorldHandler
-serveEditor ctx = do
+serveEditor _ = do
   msource <- getParam "source"
   modifyResponse $ setContentType "text/html"
   template <- liftIO $ readFile "web/env.html"
@@ -324,9 +294,7 @@ serveEditor ctx = do
   writeBS $ T.encodeUtf8 $ T.pack content
 
 indentHandler :: CodeWorldHandler
-indentHandler ctx = do
-  mode <- getBuildMode
-  Just source <- getParam "source"
+indentHandler _ = withRequiredParam "source" $ \source -> do
   reformat source `CE.catch` handleError
   where
     reformat source = do
@@ -338,7 +306,7 @@ indentHandler ctx = do
       writeLBS $ LB.fromStrict $ T.encodeUtf8 $ T.pack (show e)
 
 runHandler :: CodeWorldHandler
-runHandler ctx = do
+runHandler _ = do
   msource <- getParam "source"
   modifyResponse $ setContentType "text/html"
   template <- liftIO $ readFile "web/run.html"
@@ -358,74 +326,65 @@ waitAndLogExhausted name sem action = do
     hPutStrLn stderr $ name ++ " has exhausted its available resources, but there is further demand." 
   MSem.with sem action
 
-compileIfNeeded :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
-compileIfNeeded ctx basePath mode programId = do
-  hasResult <- doesFileExist (basePath </> "build" </> resultFile programId)
-  hasTarget <- doesFileExist (basePath </> "build" </> targetFile programId)
+compileIfNeeded :: Context -> FilePath -> BuildMode -> IO CompileStatus
+compileIfNeeded ctx basePath mode = do
+  hasResult <- doesFileExist (basePath </> "build" </> "err.txt")
+  hasTarget <- doesFileExist (basePath </> "build" </> "program.js")
   if
       | hasResult && hasTarget -> return CompileSuccess
       | hasResult -> return CompileError
       | otherwise ->
-        waitAndLogExhausted "Compile" (compileSem ctx) $ compileProgram ctx basePath mode programId
+        waitAndLogExhausted "Compile" (compileSem ctx) $ compileProgram ctx basePath mode
 
-compileProgram :: Context -> FilePath -> BuildMode -> ProgramId -> IO CompileStatus
-compileProgram ctx basePath mode programId = do
+compileProgram :: Context -> FilePath -> BuildMode -> IO CompileStatus
+compileProgram ctx basePath mode = do
   ver <- baseVersion
   baseStatus <- buildBaseIfNeeded ctx ver
 
   case baseStatus of
     CompileSuccess -> do
-      status <- compileIncrementally ctx basePath mode programId ver
-      T.writeFile (basePath </> "build" </> baseVersionFile programId) ver
+      status <- compileIncrementally ctx basePath mode ver
+      T.writeFile (basePath </> "build" </> "basever") ver
 
       -- It's possible that a new library was built during the compile.  If so, then the code
       -- we've just built is suspect, and it's better to just build it anew!
       checkVer <- baseVersion
       if ver == checkVer
         then return status
-        else compileProgram ctx basePath mode programId
+        else compileProgram ctx basePath mode
     _ -> return CompileAborted
 
-compileIncrementally :: Context -> FilePath -> BuildMode -> ProgramId -> Text -> IO CompileStatus
-compileIncrementally ctx basePath mode programId ver =
+compileIncrementally :: Context -> FilePath -> BuildMode -> Text -> IO CompileStatus
+compileIncrementally ctx basePath mode ver =
   compileSource stage source (projectModuleFinder (Just sourceDir) mode) extraExt result (getMode mode) False
   where
     sourceDir = basePath </> "source"
-    source = sourceDir </> sourceFile programId
-    target = basePath </> "build" </> targetFile programId
-    result = basePath </> "build" </> resultFile programId
+    source = sourceDir </> "program.hs"
+    target = basePath </> "build" </> "program.js"
+    result = basePath </> "build" </> "err.txt"
     baseURL = "runBaseJS?version=" ++ T.unpack ver
-    stage = UseBase target (baseSymbolFile ver) baseURL
+    stage = UseBase target ("data/base" </> T.unpack ver </> "base.symbs") baseURL
     extraExt = extraExtensions $ config ctx
 
+-- This function was originally used to allow importing shared programs via its deploy id.
+-- We don't use this feature.
 projectModuleFinder :: Maybe FilePath -> BuildMode -> String -> IO (Maybe FilePath)
-projectModuleFinder mSourceDir mode modName
-  | length modName /= 23 || '.' `elem` modName = return Nothing
-  | "P" `isPrefixOf` modName = go (ProgramId (T.pack modName))
-  | otherwise = return Nothing
-  where
-    go programId = do
-      case mSourceDir of
-        Nothing -> return Nothing
-        Just sourceDir -> do 
-          let path = sourceDir </> sourceFile programId
-          exists <- doesFileExist path
-          if exists then return (Just path) else return Nothing
+projectModuleFinder _ _ _ = pure Nothing
 
 noModuleFinder :: String -> IO (Maybe FilePath)
 noModuleFinder _ = return Nothing
 
 buildBaseIfNeeded :: Context -> Text -> IO CompileStatus
 buildBaseIfNeeded ctx ver = do
-  codeExists <- doesFileExist (baseCodeFile ver)
-  symbolsExist <- doesFileExist (baseSymbolFile ver)
+  codeExists <- doesFileExist ("data/base" </> T.unpack ver </> "base.js")
+  symbolsExist <- doesFileExist ("data/base" </> T.unpack ver </> "base.symbs")
   if not codeExists || not symbolsExist
     then waitAndLogExhausted "Base" (baseSem ctx) $ withSystemTempDirectory "genbase" $ \tmpdir -> do
       let linkMain = tmpdir </> "LinkMain.hs"
       let linkBase = tmpdir </> "LinkBase.hs"
       let err = tmpdir </> "output.txt"
       generateBaseBundle basePaths baseIgnore "codeworld" linkMain linkBase
-      let stage = GenBase "LinkBase" linkBase (baseCodeFile ver) (baseSymbolFile ver)
+      let stage = GenBase "LinkBase" linkBase ("data/base" </> T.unpack ver </> "base.js") ("data/base" </> T.unpack ver </> "base.symbs")
       let extraExt = extraExtensions $ config ctx
       compileSource stage linkMain noModuleFinder extraExt err "codeworld" False
     else return CompileSuccess

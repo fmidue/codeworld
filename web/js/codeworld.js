@@ -30,6 +30,7 @@ import {
   run,
   toggleObsoleteCodeAlert,
   warnIfUnsaved,
+  sha256digest,
 } from './codeworld_shared.js';
 
 import * as Alert from './utils/alert.js';
@@ -177,22 +178,10 @@ async function init() {
   if(window.buildMode === 'codeworld')
     document.querySelector("#docButton").style.display = "none";
 
-  let hash = location.hash.slice(1);
-  if (hash.length > 0) {
-    if (hash.slice(-2) === '==') {
-      hash = hash.slice(0, -2);
-    }
-  }
+  const savedCode = localStorage.getItem(`${window.buildMode}-${window.location.hash.slice(1)}`);
 
-  if (hash.length > 0) {
-    if (hash.slice(-2) === '==') {
-      hash = hash.slice(0, -2);
-    }
-    if (hash[0] === 'P') {
-      setCode(localStorage.getItem(`${window.buildMode}-${hash}`) || '');
-    } else if (hash[0] !== 'F') {
-      setCode('');
-    }
+  if (savedCode) {
+    setCode(savedCode);
   } else {
     if(window.buildMode === "codeworld") setCode(`import Prelude hiding (rotated, translated, colored, lettering,
                        scaled, polyline, Text, Number)
@@ -1013,52 +1002,41 @@ function compile() {
     stopRun();
   });
 
-  sendHttp('POST', 'compile', data, (request) => {
+  sendHttp('POST', 'compile', data, async (request) => {
     if (compileFinished) return;
 
     const { status, responseText } = request;
 
     window.cancelCompile();
 
-    const success = status === 200;
     const parts = responseText.split('\n=======================\n')
 
-    let hash, dhash, msg;
-    if (status < 500) {
-      if (responseText.length === 23) {
-        // will not happen
-	      hash = responseText;
-        dhash = null;
-      } else {	
-        try {
-          hash = parts[0];
-          dhash = parts[1];
-          msg = parts[2];
-          if(msg) {
-              msg = msg.replace(/^[\r\n]+|[\r\n]+$/g, '');
-          } else {
-            msg = 'Sorry!  Your program couldn\'t be run right now.';
-          }
+    if(status < 500) {
 
-          window.program = parts[3];
-          run(hash,dhash,msg,false,compileGeneration);
-          localStorage.setItem(`${window.buildMode}-${hash}`, window.codeworldEditor.getValue());
-        } catch (e) {
-          hash = '';
-        }
+      let compilerMessage = parts[0];
+      const compiledProgram = parts[1];
+
+      if(!compilerMessage) {
+        compilerMessage = 'Sorry!  Your program couldn\'t be run right now.';
       }
+
+      const codeHash = await sha256digest(src.trim());
+
+      window.program = compiledProgram;
+      run(codeHash,"deploy_hash",compilerMessage,false,compileGeneration);
+      localStorage.setItem(`${window.buildMode}-${codeHash}`, src);
+
+
+      sweetAlert.close();
+      return;
     }
 
-    if (!hash) {
-      sweetAlert({
-        title: Alert.title('Could not compile'),
-        text: 'The compiler is unavailable.  Please try again later.',
-        type: 'error',
-      });
-      return;
-    } else {
-      sweetAlert.close();
-    }
+    sweetAlert({
+      title: Alert.title('Could not compile'),
+      text: 'The compiler is unavailable.  Please try again later.',
+      type: 'error',
+    });
+
   });
 }
 

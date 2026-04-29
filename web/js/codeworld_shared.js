@@ -967,38 +967,18 @@ function run(hash, dhash, msg, error, generation) {
 
   if (hash) {
     window.location.hash = `#${hash}`;
-    // document.getElementById('shareButton').style.display = '';
   }
 
-  if (dhash) {
-    // const loc = `run.html?dhash=${dhash}&mode=${window.buildMode}`;
-    const loc = `run?mode=${window.buildMode}`;
-    runner.contentWindow.location.replace(loc);
-    if (
-      Boolean(navigator.mediaDevices) &&
-      Boolean(navigator.mediaDevices.getUserMedia)
-    ) {
-      document.getElementById('startRecButton').style.display = '';
-    }
-  } else {
-    runner.contentWindow.location.replace('about:blank');
-    document.getElementById('runner').style.display = 'none';
-    document.getElementById('startRecButton').style.display = 'none';
-  }
+  runner.contentWindow.location.replace(`run?mode=${window.buildMode}`);
+  document.getElementById('runner').style.display = 'none';
+  document.getElementById('startRecButton').style.display = 'none';
 
-  // const $shareFolderButton = $('#shareFolderButton');
   const layoutHandler = $(LAYOUT_CONTAINER_CLASSNAME).layout();
 
   if (hash || msg) {
-    // $shareFolderButton.hide();
-
     layoutHandler.show('east');
     layoutHandler.open('east');
   } else {
-    // if ($shareFolderButton.css('display') !== 'none') {
-    //   $shareFolderButton.show();
-    // }
-
     layoutHandler.hide('east');
   }
 
@@ -1009,8 +989,6 @@ function run(hash, dhash, msg, error, generation) {
   });
 
   if (error) markFailed();
-
-  window.deployHash = dhash;
 }
 
 function toggleObsoleteCodeAlert() {
@@ -1110,6 +1088,15 @@ function parseCompileErrors(rawErrors) {
   return errors;
 }
 
+async function sha256digest(data) {
+  const buffer = new TextEncoder().encode(data);
+  return await crypto.subtle.digest('SHA-256', buffer).then((hash) => {
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  });
+}
+
 export {
   clearMessages,
   definePanelExtension,
@@ -1126,4 +1113,5 @@ export {
   run,
   toggleObsoleteCodeAlert,
   warnIfUnsaved,
+  sha256digest,
 };

@@ -15,38 +15,25 @@ Description:
 Executable codeworld-server
   Hs-source-dirs: src
   Main-is: Main.hs
-  Other-modules: Model, Util, Config
+  Other-modules: Config
 
   Build-depends:
-    aeson,
     base,
-    base64-bytestring,
     bytestring,
     codeworld-compiler,
     containers,
-    cryptonite,
-    data-default,
     directory,
     extra,
-    fast-logger,
-    filelock,
     filepath,
-    haskell-src-exts < 1.21,
-    http-conduit >= 2.3.0 && < 2.3.9,
     lifted-base,
-    memory,
     mtl,
     ormolu >= 0.1,
-    process,
-    regex-compat,
     regex-tdfa,
     SafeSemaphore,
     snap-core,
     snap-server,
     temporary,
     text,
-    unix,
-    vector,
     yaml
 
   Ghc-options: -threaded

@@ -273,9 +273,9 @@ async function init() {
       
       sendHttp('POST', 'compile', data, (request) => {
         const { status, responseText } = request;
-        if(status < 500) {
+        if(status === 200) {
           const parts = responseText.split('\n=======================\n');
-          const program = parts[3];
+          const program = parts[1];
           const loadScript = document.createElement('script');
           loadScript.setAttribute('type', 'text/javascript');
           loadScript.innerHTML = program;
