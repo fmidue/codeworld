@@ -34,7 +34,6 @@ import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
 import qualified Data.ByteString as B (ByteString, empty, hPutStr, readFile, writeFile)
 import qualified Data.ByteString.Lazy as LB (fromStrict)
-import Data.List (isPrefixOf)
 import Data.List.Extra (replace)
 import qualified Data.Map as M (Map, lookup)
 import Data.Maybe (mapMaybe)
@@ -359,19 +358,10 @@ compileIncrementally ctx basePath mode ver =
     stage = UseBase target ("data/base" </> T.unpack ver </> "base.symbs") baseURL
     extraExt = extraExtensions $ config ctx
 
+-- This function was originally used to allow importing shared programs via its deploy id.
+-- We don't use this feature.
 projectModuleFinder :: Maybe FilePath -> BuildMode -> String -> IO (Maybe FilePath)
-projectModuleFinder mSourceDir _ modName
-  | length modName /= 23 || '.' `elem` modName = return Nothing
-  | "P" `isPrefixOf` modName = go
-  | otherwise = return Nothing
-  where
-    go = do
-      case mSourceDir of
-        Nothing -> return Nothing
-        Just sourceDir -> do 
-          let path = sourceDir </> "program.hs"
-          exists <- doesFileExist path
-          if exists then return (Just path) else return Nothing
+projectModuleFinder _ _ _ = pure Nothing
 
 noModuleFinder :: String -> IO (Maybe FilePath)
 noModuleFinder _ = return Nothing
