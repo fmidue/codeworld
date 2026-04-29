@@ -1013,8 +1013,8 @@ function compile() {
 
     if(status < 500) {
 
-      const compilerMessage = parts[0];
-      let compiledProgram = parts[1];
+      let compilerMessage = parts[0];
+      const compiledProgram = parts[1];
 
       if(!compilerMessage) {
         compilerMessage = 'Sorry!  Your program couldn\'t be run right now.';
