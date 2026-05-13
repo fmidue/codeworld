@@ -949,7 +949,7 @@ function initializeLayoutContainer(options) {
 }
 
 
-function run(hash, dhash, msg, error, generation) {
+function run(successful, msg, error, generation) {
   window.runningGeneration = generation;
   window.debugAvailable = false;
   window.debugActive = false;
@@ -965,17 +965,13 @@ function run(hash, dhash, msg, error, generation) {
     '*'
   );
 
-  if (hash) {
-    window.location.hash = `#${hash}`;
-  }
-
   runner.contentWindow.location.replace(`run?mode=${window.buildMode}`);
   document.getElementById('runner').style.display = 'none';
   document.getElementById('startRecButton').style.display = 'none';
 
   const layoutHandler = $(LAYOUT_CONTAINER_CLASSNAME).layout();
 
-  if (hash || msg) {
+  if (successful || msg) {
     layoutHandler.show('east');
     layoutHandler.open('east');
   } else {
@@ -1097,6 +1093,68 @@ async function sha256digest(data) {
   });
 }
 
+async function saveCodeToLocalStorageAndReplaceHash(code, mode) {
+  const currentUrl = new URL(window.location);
+  const searchParams = currentUrl.searchParams;
+
+  const codeHash = await sha256digest(code.trim());
+  localStorage.setItem(`${mode}-${codeHash}`, code);
+  currentUrl.hash = codeHash;
+
+  window.history.replaceState(window.history.state, "", currentUrl.toString());
+}
+
+function tryLoadingCodeFromLocalStorage(mode) {
+  const currentUrl = new URL(window.location);
+  const codeHash = currentUrl.hash.slice(1);
+  if(!codeHash) return;
+
+  return localStorage.getItem(`${mode}-${codeHash}`);
+}
+
+async function tryFetchCodeFromSourceAndStripURL(handler){
+  const currentUrl = new URL(window.location);
+  const searchParams = currentUrl.searchParams;
+
+  const codeSrc = searchParams.get("loadSrc");
+  if (!codeSrc) return;
+
+  const fetchController = new AbortController();
+    sweetAlert({
+      title: Alert.title('Loading code'),
+      text: 'The code is being fetched.  Please wait...',
+      onOpen: () => {
+        sweetAlert.showLoading();
+        sweetAlert.getCancelButton().disabled = false;
+      },
+      showConfirmButton: false,
+      showCancelButton: true,
+      showCloseButton: false,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      allowEnterKey: false,
+    }).then(() => {
+      fetchController.abort();
+    });
+    try {
+      const response = await fetch(codeSrc, {
+        signal: fetchController.signal,
+      });
+      const code = await response.text();
+      searchParams.delete("loadSrc");
+      window.history.replaceState(window.history.state, "", currentUrl.toString());
+      sweetAlert.close();
+      handler(code);
+
+    } catch (error) {
+      sweetAlert(
+        'Oops!',
+        'Could not load the code from source. Please try again.',
+        'error'
+      );
+    }
+}
+
 export {
   clearMessages,
   definePanelExtension,
@@ -1114,4 +1172,7 @@ export {
   toggleObsoleteCodeAlert,
   warnIfUnsaved,
   sha256digest,
+  saveCodeToLocalStorageAndReplaceHash,
+  tryLoadingCodeFromLocalStorage,
+  tryFetchCodeFromSourceAndStripURL,
 };

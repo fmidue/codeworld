@@ -30,7 +30,9 @@ import {
   run,
   toggleObsoleteCodeAlert,
   warnIfUnsaved,
-  sha256digest,
+  saveCodeToLocalStorageAndReplaceHash,
+  tryLoadingCodeFromLocalStorage,
+  tryFetchCodeFromSourceAndStripURL,
 } from './codeworld_shared.js';
 
 import * as Alert from './utils/alert.js';
@@ -178,7 +180,7 @@ async function init() {
   if(window.buildMode === 'codeworld')
     document.querySelector("#docButton").style.display = "none";
 
-  const savedCode = localStorage.getItem(`${window.buildMode}-${window.location.hash.slice(1)}`);
+  const savedCode = tryLoadingCodeFromLocalStorage(window.buildMode);
 
   if (savedCode) {
     setCode(savedCode);
@@ -192,48 +194,15 @@ picture = ...
 `);
   }
 
-  const currentUrl = new URL(window.location);
-  const searchParams = currentUrl.searchParams;
-  const codeSrc = searchParams.get("loadSrc");
-  if(codeSrc) {
-    const fetchController = new AbortController();
-    sweetAlert({
-      title: Alert.title('Loading code'),
-      text: 'The code is being fetched.  Please wait...',
-      onOpen: () => {
-        sweetAlert.showLoading();
-        sweetAlert.getCancelButton().disabled = false;
-      },
-      showConfirmButton: false,
-      showCancelButton: true,
-      showCloseButton: false,
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      allowEnterKey: false,
-    }).then(() => {
-      fetchController.abort();
-    });
-    try {
-      const response = await fetch(codeSrc, {
-        signal: fetchController.signal,
-      });
-      const code = await response.text();
-      setCode(code);
-      sweetAlert.close();
-      searchParams.delete("loadSrc");
-      window.history.replaceState(window.history.state, "", currentUrl.toString());
-    } catch (error) {
-      sweetAlert(
-        'Oops!',
-        'Could not load the code from source. Please try again.',
-        'error'
-      );
-    }
-  }
+  await tryFetchCodeFromSourceAndStripURL(async (code) => {
+    setCode(code);
+    saveCodeToLocalStorageAndReplaceHash(code, window.buildMode);
+  });
 
   if(window.preloadCode && window.buildMode === 'haskell'){
     const codeToLoad = new DOMParser().parseFromString(window.preloadCode, 'text/html').documentElement.textContent;
     setCode(codeToLoad);
+    await saveCodeToLocalStorageAndReplaceHash(codeToLoad, window.buildMode);
   };
 }
 
@@ -959,7 +928,7 @@ function stopRun() {
   }
   window.cancelCompile();
 
-  run('', '', '', false, null);
+  run(false, '', false, null);
 }
 
 function compile() {
@@ -1020,12 +989,9 @@ function compile() {
         compilerMessage = 'Sorry!  Your program couldn\'t be run right now.';
       }
 
-      const codeHash = await sha256digest(src.trim());
-
       window.program = compiledProgram;
-      run(codeHash,"deploy_hash",compilerMessage,false,compileGeneration);
-      localStorage.setItem(`${window.buildMode}-${codeHash}`, src);
-
+      run(status === 200,compilerMessage,false,compileGeneration);
+      await saveCodeToLocalStorageAndReplaceHash(src, window.buildMode);
 
       sweetAlert.close();
       return;

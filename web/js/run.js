@@ -15,6 +15,12 @@
  */
 
 import { sendHttp } from './utils/network.js';
+import { 
+  saveCodeToLocalStorageAndReplaceHash, 
+  tryLoadingCodeFromLocalStorage,
+  tryFetchCodeFromSourceAndStripURL, 
+} from "./codeworld_shared.js"
+import * as Alert from './utils/alert.js';
 
 // Tracks when the program started, and whether the program has done
 // anything observable (as best we can tell).  This is used to decide
@@ -233,6 +239,7 @@ function start() {
 }
 
 async function init() {
+  await Alert.init();
   let paramList = location.search.slice(1).split('&');
   const params = {};
   for (let i = 0; i < paramList.length; i++) {
@@ -250,6 +257,11 @@ async function init() {
 
   let mode = params['mode'];
   if(!mode) mode = 'codeworld';
+  
+  const savedCode = tryLoadingCodeFromLocalStorage(mode);
+  if(savedCode) {
+    window.preloadCode = savedCode;
+  }
 
   const codeSrc = params['loadSrc'];
 
@@ -257,12 +269,13 @@ async function init() {
     try {
       let code = window.preloadCode;
       if(!code) {
-        const response = await fetch(codeSrc);
-        code = await response.text();
-        if(!response.ok) {
-          throw new Error("Could not load source code from external location. Response code not OK.");
-        }
-      }
+        await tryFetchCodeFromSourceAndStripURL((fetchedCode) => {
+          code = fetchedCode;
+        });
+      }    
+
+      await saveCodeToLocalStorageAndReplaceHash(code, mode);
+
       const data = new FormData();
       data.append('source', code);
       data.append('mode', mode);
