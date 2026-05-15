@@ -196,7 +196,7 @@ picture = ...
 
   await tryFetchCodeFromSourceAndStripURL(async (code) => {
     setCode(code);
-    saveCodeToLocalStorageAndReplaceHash(code, window.buildMode);
+    await saveCodeToLocalStorageAndReplaceHash(code, window.buildMode);
   });
 
   if(window.preloadCode && window.buildMode === 'haskell'){

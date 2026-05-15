@@ -19,7 +19,7 @@ import {
   saveCodeToLocalStorageAndReplaceHash, 
   tryLoadingCodeFromLocalStorage,
   tryFetchCodeFromSourceAndStripURL, 
-} from "./codeworld_shared.js"
+} from './codeworld_shared.js'
 import * as Alert from './utils/alert.js';
 
 // Tracks when the program started, and whether the program has done
@@ -240,22 +240,9 @@ function start() {
 
 async function init() {
   await Alert.init();
-  let paramList = location.search.slice(1).split('&');
-  const params = {};
-  for (let i = 0; i < paramList.length; i++) {
-    const name = decodeURIComponent(paramList[i].split('=')[0]);
-    const value = decodeURIComponent(paramList[i].slice(name.length + 1));
-    params[name] = value;
-  }
-  // params from the hash
-  paramList = location.hash.slice(1).split('&');
-  for (let i = 0; i < paramList.length; i++) {
-    const name = decodeURIComponent(paramList[i].split('=')[0]);
-    const value = decodeURIComponent(paramList[i].slice(name.length + 1));
-    params[name] = value;
-  }
+  const searchParams = new URLSearchParams(window.location.search);
 
-  let mode = params['mode'];
+  let mode = searchParams.get('mode');
   if(!mode) mode = 'codeworld';
   
   const savedCode = tryLoadingCodeFromLocalStorage(mode);
@@ -263,9 +250,7 @@ async function init() {
     window.preloadCode = savedCode;
   }
 
-  const codeSrc = params['loadSrc'];
-
-  if(codeSrc || window.preloadCode) {
+  if(searchParams.has('loadSrc') || window.preloadCode) {
     try {
       let code = window.preloadCode;
       if(!code) {
@@ -274,13 +259,15 @@ async function init() {
         });
       }    
 
+      if(code.trim() === '')return;
+
       await saveCodeToLocalStorageAndReplaceHash(code, mode);
 
       const data = new FormData();
       data.append('source', code);
       data.append('mode', mode);
 
-      const enablePreview = params['enablePreview'];
+      const enablePreview = searchParams.get('enablePreview');
 
       if(enablePreview) data.append('enablePreview',enablePreview);
       

@@ -1095,13 +1095,21 @@ async function sha256digest(data) {
 
 async function saveCodeToLocalStorageAndReplaceHash(code, mode) {
   const currentUrl = new URL(window.location);
-  const searchParams = currentUrl.searchParams;
 
-  const codeHash = await sha256digest(code.trim());
-  localStorage.setItem(`${mode}-${codeHash}`, code);
-  currentUrl.hash = codeHash;
+  try {
+    const codeHash = await sha256digest(code.trim());
+    localStorage.setItem(`${mode}-${codeHash}`, code);
+    currentUrl.hash = codeHash;
 
-  window.history.replaceState(window.history.state, "", currentUrl.toString());
+    window.history.replaceState(window.history.state, "", currentUrl.toString());
+  } catch (error) {
+    console.error('Failed to save code to local storage:', error);
+    sweetAlert(
+        'Oops!',
+        'Unable to store code in local storage. Quota might have been exceeded.',
+        'error'
+      );
+  }
 }
 
 function tryLoadingCodeFromLocalStorage(mode) {
@@ -1140,11 +1148,15 @@ async function tryFetchCodeFromSourceAndStripURL(handler){
       const response = await fetch(codeSrc, {
         signal: fetchController.signal,
       });
-      const code = await response.text();
-      searchParams.delete("loadSrc");
-      window.history.replaceState(window.history.state, "", currentUrl.toString());
-      sweetAlert.close();
-      handler(code);
+      if(response.ok) {
+        const code = await response.text();
+        searchParams.delete("loadSrc");
+        window.history.replaceState(window.history.state, "", currentUrl.toString());
+        sweetAlert.close();
+        handler(code);
+      } else {
+        throw new Error(`Failed to fetch code from source: ${response.statusText}`);
+      }
 
     } catch (error) {
       sweetAlert(
