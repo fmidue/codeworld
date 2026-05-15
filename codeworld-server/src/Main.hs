@@ -42,7 +42,7 @@ import qualified Data.Text as T (drop, intercalate, lines, pack, splitAt, splitO
 import qualified Data.Text.Encoding as T (decodeUtf8, encodeUtf8)
 import qualified Data.Text.IO as T (writeFile)
 import Ormolu (OrmoluException, defaultConfig, ormolu)
-import Snap.Core (Snap, getParam, modifyResponse, redirect, route, setContentType, setResponseCode, writeBS, writeLBS)
+import Snap.Core (Snap, getParam, modifyResponse, redirect, route, setContentType, setResponseCode, writeBS, writeLBS, setHeader)
 import Snap.Http.Server (ConfigLog (ConfigIoLog), httpServe)
 import qualified Snap.Http.Server.Config as S (commandLineConfig, defaultConfig, setErrorLog, setPort)
 import Snap.Util.FileServe (serveDirectory, serveFile)
@@ -99,6 +99,9 @@ codeworldUploadPolicy :: UploadPolicy
 codeworldUploadPolicy =
   setMaximumFormInputSize (2 ^ (23 :: Int)) defaultUploadPolicy
 
+disableCaching :: Snap ()
+disableCaching = modifyResponse $ setHeader "Cache-Control" "no-cache"
+
 -- Processes the body of a multipart request.
 #if MIN_VERSION_snap_core(1,0,0)
 processBody :: Snap ()
@@ -132,7 +135,7 @@ site ctx =
           ("run.html", redirect "/run"),
           ("env.html", redirect "/")
         ]
-   in route routes <|> serveDirectory "web"
+   in disableCaching >>  (route routes <|> serveDirectory "web")
 
 assert :: Bool -> IO ()
 assert p =
