@@ -1153,7 +1153,7 @@ async function tryFetchCodeFromSourceAndStripURL(handler){
         searchParams.delete("loadSrc");
         window.history.replaceState(window.history.state, "", currentUrl.toString());
         sweetAlert.close();
-        handler(code);
+        await handler(code);
       } else {
         throw new Error(`Failed to fetch code from source: ${response.statusText}`);
       }

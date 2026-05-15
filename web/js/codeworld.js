@@ -991,9 +991,8 @@ function compile() {
 
       window.program = compiledProgram;
       run(status === 200,compilerMessage,false,compileGeneration);
-      await saveCodeToLocalStorageAndReplaceHash(src, window.buildMode);
-
       sweetAlert.close();
+      await saveCodeToLocalStorageAndReplaceHash(src, window.buildMode);
       return;
     }
 
