@@ -135,7 +135,7 @@ site ctx =
           ("run.html", redirect "/run"),
           ("env.html", redirect "/")
         ]
-   in (route routes <|> serveDirectory "web") >> disableCaching
+   in disableCaching >>  (route routes <|> serveDirectory "web")
 
 assert :: Bool -> IO ()
 assert p =
