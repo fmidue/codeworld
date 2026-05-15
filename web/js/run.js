@@ -15,6 +15,12 @@
  */
 
 import { sendHttp } from './utils/network.js';
+import { 
+  saveCodeToLocalStorageAndReplaceHash, 
+  tryLoadingCodeFromLocalStorage,
+  tryFetchCodeFromSourceAndStripURL, 
+} from './codeworld_shared.js'
+import * as Alert from './utils/alert.js';
 
 // Tracks when the program started, and whether the program has done
 // anything observable (as best we can tell).  This is used to decide
@@ -233,41 +239,35 @@ function start() {
 }
 
 async function init() {
-  let paramList = location.search.slice(1).split('&');
-  const params = {};
-  for (let i = 0; i < paramList.length; i++) {
-    const name = decodeURIComponent(paramList[i].split('=')[0]);
-    const value = decodeURIComponent(paramList[i].slice(name.length + 1));
-    params[name] = value;
-  }
-  // params from the hash
-  paramList = location.hash.slice(1).split('&');
-  for (let i = 0; i < paramList.length; i++) {
-    const name = decodeURIComponent(paramList[i].split('=')[0]);
-    const value = decodeURIComponent(paramList[i].slice(name.length + 1));
-    params[name] = value;
-  }
+  await Alert.init();
+  const searchParams = new URLSearchParams(window.location.search);
 
-  let mode = params['mode'];
+  let mode = searchParams.get('mode');
   if(!mode) mode = 'codeworld';
+  
+  const savedCode = tryLoadingCodeFromLocalStorage(mode);
+  if(savedCode) {
+    window.preloadCode = savedCode;
+  }
 
-  const codeSrc = params['loadSrc'];
-
-  if(codeSrc || window.preloadCode) {
+  if(searchParams.has('loadSrc') || window.preloadCode) {
     try {
       let code = window.preloadCode;
       if(!code) {
-        const response = await fetch(codeSrc);
-        code = await response.text();
-        if(!response.ok) {
-          throw new Error("Could not load source code from external location. Response code not OK.");
-        }
-      }
+        await tryFetchCodeFromSourceAndStripURL((fetchedCode) => {
+          code = fetchedCode;
+        });
+      }    
+
+      if(code.trim() === '')return;
+
+      await saveCodeToLocalStorageAndReplaceHash(code, mode);
+
       const data = new FormData();
       data.append('source', code);
       data.append('mode', mode);
 
-      const enablePreview = params['enablePreview'];
+      const enablePreview = searchParams.get('enablePreview');
 
       if(enablePreview) data.append('enablePreview',enablePreview);
       
