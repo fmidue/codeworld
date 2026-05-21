@@ -101,30 +101,28 @@ if [ ! -e "${cached_hash_file}" ]; then
      if  [ -f "${frozen_hash_file}" ]; then
 	 cp "${frozen_hash_file}" "${cached_hash_file}" || exit 1
      else
-	 touch "${cached_hash_file}"
+	 touch "${cached_hash_file}" || exit 1
      fi
 fi
 
 # Now do the actual work
-exitstat=0
-
 for url in "${TO_MIRROR[@]}"; do
     file_relative=".${url#http?(s):/}"
     file="${mirror_dir}/${file_relative}"
-    [ -e "${file}" ] && (find "${file}" -type f -mtime "+${MAX_DAYS}" -print0 | xargs -0 -r rm) || exitstat=1
+    if [ -e "${file}" ]; then
+        find "${file}" -type f -mtime "+${MAX_DAYS}" -print0 | xargs -0 -r rm || exit 1
+    fi
     [ -f "${file}" ] || \
 	wget --no-verbose --no-use-server-timestamps \
 	     --directory-prefix="${mirror_dir}" --force-directories "${url}" || \
-	exitstat=1
+	exit 1
     if ! (sed 's/[^ ]*  *//' "${cached_hash_file}" | grep -F -x -q "${file_relative}"); then
         echo "Warning: First download of ${url}; adding hash to ${cached_hash_file}"
-        (cd "${mirror_dir}"; sha256sum "${file_relative}") >> "${cached_hash_file}" || exitstat=1
+        (cd "${mirror_dir}"; sha256sum "${file_relative}") >> "${cached_hash_file}" || exit 1
     fi
 done
 
 if ! (cd "${mirror_dir}"; sha256sum --quiet --check -) < "${cached_hash_file}"; then
-    exitstat="$?"
     echo "DANGER: Validation failed for downloaded third-party code; tampered with?" 1>&2
+    exit 1
 fi
-
-exit "${exitstat}"
