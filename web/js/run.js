@@ -195,11 +195,11 @@ function start() {
     addMessage('error', str);
     if(window.self === window.top && !window.didShowError) {
       window.didShowError = true;
-      const sanitizedMessage = new DOMParser().parseFromString(str, "text/html").documentElement.textContent;
+      const sanitizedMessage = new DOMParser().parseFromString(str, 'text/html').documentElement.textContent;
       sweetAlert({
         title: 'A runtime error occurred in your program.',
         html: `<pre style="text-align: left;">${sanitizedMessage}</pre>`,
-        width: "fit-content",
+        width: 'fit-content',
         type: 'error',
         showConfirmButton: false,
         showCancelButton: false,
