@@ -193,7 +193,7 @@ function start() {
       str = str.replace(/%s/, args[i]);
     }
     addMessage('error', str);
-    if(window.self === window.top && !window.didShowError) {
+    if (window.self === window.top && !window.didShowError) {
       window.didShowError = true;
       const sanitizedMessage = new DOMParser().parseFromString(str, 'text/html').documentElement.textContent;
       sweetAlert({
