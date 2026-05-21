@@ -201,17 +201,12 @@ function start() {
         html: `<pre style="text-align: left;">${sanitizedMessage}</pre>`,
         width: "fit-content",
         type: 'error',
-        showConfirmButton: true,
-        confirmButtonText: "Open in CodeWorld Editor",
+        showConfirmButton: false,
         showCancelButton: false,
         showCloseButton: false,
         allowOutsideClick: false,
         allowEscapeKey: false,
         allowEnterKey: false,
-      }).then(() => {
-        const searchParams = new URLSearchParams(window.location.search);
-        const mode = searchParams.get('mode') || 'codeworld';
-        window.location.href = `/${mode === 'codeworld' ? '' : mode}${window.location.hash}`;
       });
     }
   };
