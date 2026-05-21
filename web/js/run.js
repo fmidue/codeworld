@@ -29,6 +29,7 @@ import * as Alert from './utils/alert.js';
 // or at startup when the compile errors were just printed anyway.
 window.programStartTime = Date.now();
 window.hasObservableOutput = false;
+window.didShowError = false;
 
 window.addEventListener('message', (event) => {
   if (!event.data.type) return;
@@ -192,6 +193,22 @@ function start() {
       str = str.replace(/%s/, args[i]);
     }
     addMessage('error', str);
+    if (window.self === window.top && !window.didShowError) {
+      window.didShowError = true;
+      const sanitizedMessage = new DOMParser().parseFromString(str, 'text/html').documentElement.textContent;
+      sweetAlert({
+        title: 'A runtime error occurred in your program.',
+        html: `<pre style="text-align: left;">${sanitizedMessage}</pre>`,
+        width: 'fit-content',
+        type: 'error',
+        showConfirmButton: false,
+        showCancelButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: false,
+      });
+    }
   };
   window.h$base_stdout_fd.write = window.h$base_writeStdout;
   window.h$base_stderr_fd.write = window.h$base_writeStderr;
