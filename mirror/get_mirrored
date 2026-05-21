@@ -113,9 +113,12 @@ for url in "${TO_MIRROR[@]}"; do
     file="${mirror_dir}/${file_relative}"
     [ -e "${file}" ] && (find "${file}" -type f -mtime "+${MAX_DAYS}" -print0 | xargs -0 -r rm) || exitstat=1
     [ -f "${file}" ] || \
-	wget --no-verbose --no-use-server-timestamps \
-	     --directory-prefix="${mirror_dir}" --force-directories "${url}" || \
-	exitstat=1
+  if ! wget --no-verbose --no-use-server-timestamps --timeout=60 --tries=2 --waitretry=5 \
+    --directory-prefix="${mirror_dir}" --force-directories "${url}"
+  then
+    echo "Download of ${url} failed!" >&2
+    exit 1
+  fi
     if ! (sed 's/[^ ]*  *//' "${cached_hash_file}" | grep -F -x -q "${file_relative}"); then
         echo "Warning: First download of ${url}; adding hash to ${cached_hash_file}"
         (cd "${mirror_dir}"; sha256sum "${file_relative}") >> "${cached_hash_file}" || exitstat=1
