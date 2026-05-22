@@ -124,8 +124,7 @@ for url in "${TO_MIRROR[@]}"; do
         (cd "${mirror_dir}"; sha256sum "${file_relative}") >> "${cached_hash_file}" || exit 1
     fi
 done
-
-if ! (cd "${mirror_dir}"; sha256sum --quiet --check -) < "${cached_hash_file}"; then
+if ! (cd "${mirror_dir}"; sha256sum --check -) < "${cached_hash_file}"; then
     echo "DANGER: Validation failed for downloaded third-party code; tampered with?" 1>&2
     exit 1
 fi
