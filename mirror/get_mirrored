@@ -25,7 +25,7 @@ TO_MIRROR=(
     'http://cdn.materialdesignicons.com/3.6.95/css/materialdesignicons.min.css.map'
     'http://cdn.materialdesignicons.com/3.6.95/fonts/materialdesignicons-webfont.ttf'
     'http://cdn.materialdesignicons.com/3.6.95/fonts/materialdesignicons-webfont.woff2'
-    'http://casual-effects.com/markdeep/latest/markdeep.min.js'
+    'http://casual-effects.com/markdeep/1.19/markdeep.min.js'
     'http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.4.3/jquery.layout_and_plugins.min.js'
     'http://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/7.19.2/sweetalert2.all.min.js'
     'http://cdnjs.cloudflare.com/ajax/libs/jqtree/1.4.10/tree.jquery.js'
