@@ -65,7 +65,7 @@ window.onscroll = (event) => {
     mode: 'script',
   };
   await $.getScript(
-    'mirrored/casual-effects.com/markdeep/latest/markdeep.min.js'
+    'mirrored/casual-effects.com/markdeep/1.19/markdeep.min.js'
   );
 
   loadPosition();
