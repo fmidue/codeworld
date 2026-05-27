@@ -266,59 +266,83 @@ rectangleVertices :: Double -> Double -> [Point]
 rectangleVertices w h = [(w / 2, h / 2), (w / 2, - h / 2), (- w / 2, - h / 2), (- w / 2, h / 2)]
 
 -- | A thin rectangle, with this width and height
+--
+-- The width and height must be non-negative.
 rectangle :: HasCallStack => Double -> Double -> Picture
-rectangle w h = Rectangle (getDebugSrcLoc callStack) w h
+rectangle w h
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
+  | otherwise = Rectangle (getDebugSrcLoc callStack) w h
 
 -- | A solid rectangle, with this width and height
+--
+-- The width and height must be non-negative.
 solidRectangle :: HasCallStack => Double -> Double -> Picture
-solidRectangle w h = SolidRectangle (getDebugSrcLoc callStack) w h
+solidRectangle w h
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
+  | otherwise = SolidRectangle (getDebugSrcLoc callStack) w h
 
 -- | A thick rectangle, with this line width, and width and height
 --
--- The line width must be non-negative.
+-- The line width, as well as width and height, must be non-negative.
 thickRectangle :: HasCallStack => Double -> Double -> Double -> Picture
 thickRectangle lw w h 
   | lw < 0 = error "The line width must be non-negative."
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
   | otherwise = ThickRectangle (getDebugSrcLoc callStack) lw w h
 
 -- | A thin circle, with this radius
+--
+-- The radius must be non-negative.
 circle :: HasCallStack => Double -> Picture
-circle = Circle (getDebugSrcLoc callStack)
+circle r
+  | r < 0 = error "The radius must be non-negative."
+  | otherwise = Circle (getDebugSrcLoc callStack) r
 
 -- | A thick circle, with this line width and radius
 --
--- The line width must be non-negative and not greater than its diameter.
+-- The line width and radius must be non-negative, and the line width must not
+-- be greater than the diameter.
 thickCircle :: HasCallStack => Double -> Double -> Picture
 thickCircle a r 
   | a < 0 = error "The line width must be non-negative."
-  | a <= 2 * r = ThickCircle (getDebugSrcLoc callStack) a r
-  | otherwise = error "The line width of a thickCircle must not be greater than its diameter."
+  | r < 0 = error "The radius must be non-negative."
+  | a > 2 * r = error "The line width must not be greater than the diameter."
+  | otherwise = ThickCircle (getDebugSrcLoc callStack) a r
 
 -- | A thin arc, starting and ending at these angles, with this radius
 --
--- Angles are in radians.
+-- Angles are in radians. The radius must be non-negative.
 arc :: HasCallStack => Double -> Double -> Double -> Picture
-arc b e r = Arc (getDebugSrcLoc callStack) b e r
+arc b e r
+  | r < 0 = error "The radius must be non-negative."
+  | otherwise = Arc (getDebugSrcLoc callStack) b e r
 
 -- | A thick arc with this line width, starting and ending at these angles,
 -- with this radius.
 --
--- Angles are in radians. The line width must be non-negative.
+-- Angles are in radians. The line width and radius must be non-negative.
 thickArc :: HasCallStack => Double -> Double -> Double -> Double -> Picture
 thickArc w b e r 
   | w < 0 = error "The line width must be non-negative."
+  | r < 0 = error "The radius must be non-negative."
   | otherwise = ThickArc (getDebugSrcLoc callStack) b e r w
 
 -- | A solid circle, with this radius
+--
+-- The radius must be non-negative.
 solidCircle :: HasCallStack => Double -> Picture
-solidCircle = SolidCircle (getDebugSrcLoc callStack)
+solidCircle r
+  | r < 0 = error "The radius must be non-negative."
+  | otherwise = SolidCircle (getDebugSrcLoc callStack) r
 
 -- | A solid sector of a circle (i.e., a pie slice) starting and ending at these
 -- angles, with this radius
 --
--- Angles are in radians.
+-- Angles are in radians. The radius must be non-negative.
 sector :: HasCallStack => Double -> Double -> Double -> Picture
-sector = Sector (getDebugSrcLoc callStack)
+sector b e r
+  | r < 0 = error "The radius must be non-negative."
+  | otherwise = Sector (getDebugSrcLoc callStack) b e r
 
 -- | A rendering of text characters.
 lettering :: HasCallStack => Text -> Picture
@@ -342,7 +366,7 @@ translated :: HasCallStack => Double -> Double -> Picture -> Picture
 translated = Translate (getDebugSrcLoc callStack)
 
 -- | A picture scaled by these factors in the x and y directions.  Scaling
--- by a negative factoralso reflects across that axis.
+-- by a negative factor also reflects across that axis.
 scaled :: HasCallStack => Double -> Double -> Picture -> Picture
 scaled = Scale (getDebugSrcLoc callStack)
 
@@ -365,8 +389,12 @@ reflected :: HasCallStack => Double -> Picture -> Picture
 reflected = Reflect (getDebugSrcLoc callStack)
 
 -- | A picture clipped to a rectangle around the origin with this width and height.
+--
+-- The width and height must be non-negative.
 clipped :: HasCallStack => Double -> Double -> Picture -> Picture
-clipped = Clip (getDebugSrcLoc callStack)
+clipped w h
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
+  | otherwise = Clip (getDebugSrcLoc callStack) w h
 
 -- A picture made by drawing these pictures, ordered from top to bottom.
 pictures :: HasCallStack => [Picture] -> Picture
@@ -413,12 +441,14 @@ image ::
   Text ->
   -- | Data-scheme URI for the image data
   Text ->
-  -- | Width, in CodeWorld screen units
+  -- | Width (non-negative), in CodeWorld screen units
   Double ->
-  -- | Height, in CodeWorld screen units
+  -- | Height (non-negative), in CodeWorld screen units
   Double ->
   Picture
-image = Sketch (getDebugSrcLoc callStack)
+image name uri w h
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
+  | otherwise = Sketch (getDebugSrcLoc callStack) name uri w h
 
 getDebugSrcLoc :: CallStack -> Maybe SrcLoc
 getDebugSrcLoc cs = Data.List.find ((== "main") . srcLocPackage) locs
