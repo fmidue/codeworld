@@ -283,12 +283,11 @@ solidRectangle w h
 
 -- | A thick rectangle, with this line width, and width and height
 --
--- The width and height must be non-negative.
--- The line width must be non-negative.
+-- The line width, as well as width and heigth, must be non-negative.
 thickRectangle :: HasCallStack => Double -> Double -> Double -> Picture
 thickRectangle lw w h 
-  | w < 0 || h < 0 = error "The width and height must be non-negative."
   | lw < 0 = error "The line width must be non-negative."
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
   | otherwise = ThickRectangle (getDebugSrcLoc callStack) lw w h
 
 -- | A thin circle, with this radius
