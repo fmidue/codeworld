@@ -297,6 +297,29 @@ async function init() {
           loadScript.setAttribute('type', 'text/javascript');
           loadScript.innerHTML = program;
           document.body.appendChild(loadScript);
+        } else if (status >= 400) {
+          const parts = responseText.split('\n=======================\n');
+          let message = 'Something went wrong.';
+          if(status === 400) {
+            const errors = parts[0].split('\n').slice(2).join('\n');
+            const parsedErrors = new DOMParser().parseFromString(errors, 'text/html').documentElement.textContent;
+            if (parsedErrors) message = parsedErrors;
+          }
+          const messagePre = document.createElement('pre');
+          messagePre.style.textAlign = 'left';
+          messagePre.textContent = message;
+          sweetAlert({
+            title: 'Compilation failed.',
+            html: messagePre.outerHTML,
+            width: 'fit-content',
+            type: 'error',
+            showConfirmButton: false,
+            showCancelButton: false,
+            showCloseButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            allowEnterKey: false,
+          });
         }
       });
     } catch (error) {
