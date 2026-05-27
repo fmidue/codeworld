@@ -390,7 +390,9 @@ reflected = Reflect (getDebugSrcLoc callStack)
 
 -- | A picture clipped to a rectangle around the origin with this width and height.
 clipped :: HasCallStack => Double -> Double -> Picture -> Picture
-clipped = Clip (getDebugSrcLoc callStack)
+clipped w h
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
+  | otherwise = Clip (getDebugSrcLoc callStack) w h
 
 -- A picture made by drawing these pictures, ordered from top to bottom.
 pictures :: HasCallStack => [Picture] -> Picture
@@ -442,7 +444,9 @@ image ::
   -- | Height, in CodeWorld screen units
   Double ->
   Picture
-image = Sketch (getDebugSrcLoc callStack)
+image name uri w h
+  | w < 0 || h < 0 = error "The width and height must be non-negative."
+  | otherwise = Sketch (getDebugSrcLoc callStack) name uri w h
 
 getDebugSrcLoc :: CallStack -> Maybe SrcLoc
 getDebugSrcLoc cs = Data.List.find ((== "main") . srcLocPackage) locs
