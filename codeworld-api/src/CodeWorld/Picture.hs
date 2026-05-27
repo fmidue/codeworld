@@ -389,6 +389,8 @@ reflected :: HasCallStack => Double -> Picture -> Picture
 reflected = Reflect (getDebugSrcLoc callStack)
 
 -- | A picture clipped to a rectangle around the origin with this width and height.
+--
+-- The width and height must be non-negative.
 clipped :: HasCallStack => Double -> Double -> Picture -> Picture
 clipped w h
   | w < 0 || h < 0 = error "The width and height must be non-negative."
@@ -439,9 +441,9 @@ image ::
   Text ->
   -- | Data-scheme URI for the image data
   Text ->
-  -- | Width, in CodeWorld screen units
+  -- | Width (non-negative), in CodeWorld screen units
   Double ->
-  -- | Height, in CodeWorld screen units
+  -- | Height (non-negative), in CodeWorld screen units
   Double ->
   Picture
 image name uri w h
