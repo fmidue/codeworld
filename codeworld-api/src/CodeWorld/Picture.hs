@@ -302,7 +302,7 @@ circle r
 -- | A thick circle, with this line width and radius
 --
 -- The line width and radius must be non-negative, and the line width must not
--- be greater than its diameter.
+-- be greater than the diameter.
 thickCircle :: HasCallStack => Double -> Double -> Picture
 thickCircle a r 
   | r < 0 = error "The radius must be non-negative."
@@ -367,7 +367,7 @@ translated :: HasCallStack => Double -> Double -> Picture -> Picture
 translated = Translate (getDebugSrcLoc callStack)
 
 -- | A picture scaled by these factors in the x and y directions.  Scaling
--- by a negative factoralso reflects across that axis.
+-- by a negative factor also reflects across that axis.
 scaled :: HasCallStack => Double -> Double -> Picture -> Picture
 scaled = Scale (getDebugSrcLoc callStack)
 
