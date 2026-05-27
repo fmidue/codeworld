@@ -304,10 +304,10 @@ circle r
 -- be greater than the diameter.
 thickCircle :: HasCallStack => Double -> Double -> Picture
 thickCircle a r 
-  | r < 0 = error "The radius must be non-negative."
   | a < 0 = error "The line width must be non-negative."
-  | a <= 2 * r = ThickCircle (getDebugSrcLoc callStack) a r
-  | otherwise = error "The line width of a thickCircle must not be greater than its diameter."
+  | r < 0 = error "The radius must be non-negative."
+  | a > 2 * r = error "The line width must not be greater than the diameter."
+  | otherwise = ThickCircle (getDebugSrcLoc callStack) a r
 
 -- | A thin arc, starting and ending at these angles, with this radius
 --
@@ -323,8 +323,8 @@ arc b e r
 -- Angles are in radians. The line width and radius must be non-negative.
 thickArc :: HasCallStack => Double -> Double -> Double -> Double -> Picture
 thickArc w b e r 
-  | r < 0 = error "The radius must be non-negative."
   | w < 0 = error "The line width must be non-negative."
+  | r < 0 = error "The radius must be non-negative."
   | otherwise = ThickArc (getDebugSrcLoc callStack) b e r w
 
 -- | A solid circle, with this radius
