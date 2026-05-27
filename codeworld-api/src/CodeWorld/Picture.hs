@@ -283,7 +283,7 @@ solidRectangle w h
 
 -- | A thick rectangle, with this line width, and width and height
 --
--- The line width, as well as width and heigth, must be non-negative.
+-- The line width, as well as width and height, must be non-negative.
 thickRectangle :: HasCallStack => Double -> Double -> Double -> Picture
 thickRectangle lw w h 
   | lw < 0 = error "The line width must be non-negative."
