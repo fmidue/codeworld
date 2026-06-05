@@ -8,3 +8,9 @@
   width: 100vw;
   height: 100vh;
 }
+
+.runner-message {
+  display: none;
+  height: 100vh;
+  font-size: 12pt !important;
+}
