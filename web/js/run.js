@@ -226,14 +226,8 @@ function start() {
       if (!window.parent) {
         return;
       }
-      
-      const canvasAdded = mutations.some(mutation =>
-        [...mutation.addedNodes].some(
-          node => node.nodeName === 'CANVAS' && node.id === 'screen'
-        )
-      );
 
-      if (!canvasAdded) return;
+      if (!document.querySelector("#screen")) return;
 
       $('#message').hide();
       window.parent.postMessage(
