@@ -109,8 +109,6 @@ function addMessage(type, str) {
   const recentStart = Date.now() - window.programStartTime < 1000;
   const printDeferred = window.hasObservableOutput || !recentStart;
 
-  printMessage(type,str);
-
   window.hasObservableOutput = true;
 
   // Catch exceptions to protect against cross-domain access errors.
@@ -129,6 +127,7 @@ function addMessage(type, str) {
       }
     }
 
+    if(str)printMessage(type,str);
     if (window.parent) {
       window.parent.postMessage(
         {
