@@ -19,6 +19,7 @@ import {
   saveCodeToLocalStorageAndReplaceHash, 
   tryLoadingCodeFromLocalStorage,
   tryFetchCodeFromSourceAndStripURL, 
+  printMessage
 } from './codeworld_shared.js'
 import * as Alert from './utils/alert.js';
 
@@ -126,6 +127,7 @@ function addMessage(type, str) {
       }
     }
 
+    if(str)printMessage(type,str);
     if (window.parent) {
       window.parent.postMessage(
         {
@@ -214,7 +216,7 @@ function start() {
   window.h$base_stderr_fd.write = window.h$base_writeStderr;
   window.h$base_stdin_fd.read = window.h$base_readStdin;
 
-  const showObserver = new MutationObserver(() => {
+  const showObserver = new MutationObserver((mutations) => {
     window.hasObservableOutput = true;
 
     // Catch exceptions to protect against cross-domain access errors.
@@ -225,6 +227,9 @@ function start() {
         return;
       }
 
+      if (!document.querySelector("#screen")) return;
+
+      $('#message').hide();
       window.parent.postMessage(
         {
           type: 'showGraphics',
@@ -242,7 +247,10 @@ function start() {
     characterData: true,
     subtree: true,
   });
-
+  if (window.self === window.top) {
+    $('#message').show();
+  }
+  
   // Update program start time in case loading/setup took a while.
   window.programStartTime = Date.now();
   notifyStarted();
