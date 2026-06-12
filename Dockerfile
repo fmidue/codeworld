@@ -27,9 +27,9 @@ ENV PATH=$CODEWORLD_DIR/.cabal/bin:$PATH
 RUN <<PREPARE_INSTALLATION
 set -e
 ghcup upgrade
-ghcup install 8.6.5
-ghcup set 8.6.5
-ghcup install-cabal 2.4.1.0
+ghcup install ghc 8.6.5
+ghcup set ghc 8.6.5
+ghcup install cabal 2.4.1.0
 
 
 cabal update --index-state='2023-02-09T01:33:22Z'
